@@ -1,5 +1,12 @@
 # Collaborative ML-based NIDS
-The codes are provided by Chengbo Zhou and Pegah Golchin
+This repository hosts the code for the research paper titled "CML-IDS: Enhancing Intrusion Detection in SDN through Collaborative Machine Learning".
+Stay tuned for the upcoming link to access the paper.
+
+If you use the code, please cite us:
+"Golchin, P., Zhou, C., Agnihotri, P., Hajizadeh, M., Kundel, R., Steinmetz, R., 2023 October. CML-IDS: Enhancing Intrusion Detection in SDN through Collaborative Machine Learning.
+To appear in the Proceedings of the 19th International Conference on Network and Service Management (CNSM), 2023."
+
+The code is provided by Chengbo Zhou and Pegah Golchin
 ## Table of Contents
 
 - [**Prerequisites**](#prerequisites)
