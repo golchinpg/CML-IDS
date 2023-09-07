@@ -1,0 +1,4 @@
+counter_read flow_predicted_p4_sum_counter 0
+counter_read flow_predicted_controller_sum_counter 0
+register_read classification_time_controller_register 0
+register_read classification_time_p4_egress_register 0

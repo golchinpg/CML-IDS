@@ -1,0 +1,3202 @@
+# 1 "p4/rf_new_time.p4"
+# 1 "<built-in>"
+# 1 "<command-line>"
+# 1 "p4/rf_new_time.p4"
+/* -*- P4_16 -*- */
+# 1 "/usr/local/share/p4c/p4include/core.p4" 1
+/*
+Copyright 2013-present Barefoot Networks, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+/* This is the P4-16 core library, which declares some built-in P4 constructs using P4 */
+
+
+
+
+/// Standard error codes.  New error codes can be declared by users.
+error {
+    NoError, /// No error.
+    PacketTooShort, /// Not enough bits in packet for 'extract'.
+    NoMatch, /// 'select' expression has no matches.
+    StackOutOfBounds, /// Reference to invalid element of a header stack.
+    HeaderTooShort, /// Extracting too many bits into a varbit field.
+    ParserTimeout, /// Parser execution time limit exceeded.
+    ParserInvalidArgument /// Parser operation was called with a value
+                           /// not supported by the implementation.
+}
+
+extern packet_in {
+    /// Read a header from the packet into a fixed-sized header @hdr and advance the cursor.
+    /// May trigger error PacketTooShort or StackOutOfBounds.
+    /// @T must be a fixed-size header type
+    void extract<T>(out T hdr);
+    /// Read bits from the packet into a variable-sized header @variableSizeHeader
+    /// and advance the cursor.
+    /// @T must be a header containing exactly 1 varbit field.
+    /// May trigger errors PacketTooShort, StackOutOfBounds, or HeaderTooShort.
+    void extract<T>(out T variableSizeHeader,
+                    in bit<32> variableFieldSizeInBits);
+    /// Read bits from the packet without advancing the cursor.
+    /// @returns: the bits read from the packet.
+    /// T may be an arbitrary fixed-size type.
+    T lookahead<T>();
+    /// Advance the packet cursor by the specified number of bits.
+    void advance(in bit<32> sizeInBits);
+    /// @return packet length in bytes.  This method may be unavailable on
+    /// some target architectures.
+    bit<32> length();
+}
+
+extern packet_out {
+    /// Write @hdr into the output packet, advancing cursor.
+    /// @T can be a header type, a header stack, a header_union, or a struct
+    /// containing fields with such types.
+    void emit<T>(in T hdr);
+}
+
+// TODO: remove from this file, convert to built-in
+/// Check a predicate @check in the parser; if the predicate is true do nothing,
+/// otherwise set the parser error to @toSignal, and transition to the `reject` state.
+extern void verify(in bool check, in error toSignal);
+
+/// Built-in action that does nothing.
+@noWarn("unused")
+action NoAction() {}
+
+/// Standard match kinds for table key fields.
+/// Some architectures may not support all these match kinds.
+/// Architectures can declare additional match kinds.
+match_kind {
+    /// Match bits exactly.
+    exact,
+    /// Ternary match, using a mask.
+    ternary,
+    /// Longest-prefix match.
+    lpm
+}
+
+/// Static assert evaluates a boolean expression
+/// at compilation time.  If the expression evaluates to
+/// false, compilation is stopped and the corresponding message is printed.
+/// The function returns a boolean, so that it can be used
+/// as a global constant value in a program, e.g.:
+/// const bool _check = static_assert(V1MODEL_VERSION > 20180000, "Expected a v1 model version >= 20180000");
+extern bool static_assert(bool check, string message);
+
+/// Like the above but using a default message.
+extern bool static_assert(bool check);
+# 3 "p4/rf_new_time.p4" 2
+# 1 "/usr/local/share/p4c/p4include/v1model.p4" 1
+/*
+Copyright 2013-present Barefoot Networks, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+/* P4-16 declaration of the P4 v1.0 switch model */
+
+/* Note 1: More details about the definition of v1model architecture
+ * can be found at the location below.
+ *
+ * https://github.com/p4lang/behavioral-model/blob/main/docs/simple_switch.md
+ *
+ * Note 3: There are at least some P4_14 implementations where
+ * invoking a generate_digest operation on a field_list will create a
+ * message to the control plane that contains the values of those
+ * fields when the ingress control is finished executing, which can be
+ * different than the values those fields have at the time the
+ * generate_digest operation is invoked in the program, if those field
+ * values are changed later in the execution of the P4_14 ingress
+ * control.
+ *
+ * The P4_16 plus v1model implementation should always create digest
+ * messages that contain the values of the specified fields at the
+ * time that the digest extern function is called.  Thus if a P4_14
+ * program expecting the behavior described above is compiled using
+ * p4c, it may behave differently.
+ */
+
+
+
+
+# 1 "/usr/local/share/p4c/p4include/core.p4" 1
+/*
+Copyright 2013-present Barefoot Networks, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+/* This is the P4-16 core library, which declares some built-in P4 constructs using P4 */
+# 44 "/usr/local/share/p4c/p4include/v1model.p4" 2
+
+
+
+
+
+match_kind {
+    range,
+    // Either an exact match, or a wildcard (matching any value).
+    optional,
+    // Used for implementing dynamic_action_selection
+    selector
+}
+
+const bit<32> __v1model_version = 20180101;
+
+
+
+
+
+@metadata @name("standard_metadata")
+struct standard_metadata_t {
+
+
+
+
+
+    bit<9> ingress_port;
+    bit<9> egress_spec;
+    bit<9> egress_port;
+
+    bit<32> instance_type;
+    bit<32> packet_length;
+    //
+    // @alias is used to generate the field_alias section of the BMV2 JSON.
+    // Field alias creates a mapping from the metadata name in P4 program to
+    // the behavioral model's internal metadata name. Here we use it to
+    // expose all metadata supported by simple switch to the user through
+    // standard_metadata_t.
+    //
+    // flattening fields that exist in bmv2-ss
+    // queueing metadata
+    @alias("queueing_metadata.enq_timestamp")
+    bit<32> enq_timestamp;
+    @alias("queueing_metadata.enq_qdepth")
+    bit<19> enq_qdepth;
+    @alias("queueing_metadata.deq_timedelta")
+    bit<32> deq_timedelta;
+    /// queue depth at the packet dequeue time.
+    @alias("queueing_metadata.deq_qdepth")
+    bit<19> deq_qdepth;
+
+    // intrinsic metadata
+    @alias("intrinsic_metadata.ingress_global_timestamp")
+    bit<48> ingress_global_timestamp;
+    @alias("intrinsic_metadata.egress_global_timestamp")
+    bit<48> egress_global_timestamp;
+    /// multicast group id (key for the mcast replication table)
+    @alias("intrinsic_metadata.mcast_grp")
+    bit<16> mcast_grp;
+    /// Replication ID for multicast
+    @alias("intrinsic_metadata.egress_rid")
+    bit<16> egress_rid;
+    /// Indicates that a verify_checksum() method has failed.
+    /// 1 if a checksum error was found, otherwise 0.
+    bit<1> checksum_error;
+    /// Error produced by parsing
+    error parser_error;
+    /// set packet priority
+    @alias("intrinsic_metadata.priority")
+    bit<3> priority;
+}
+
+enum CounterType {
+    packets,
+    bytes,
+    packets_and_bytes
+}
+
+enum MeterType {
+    packets,
+    bytes
+}
+
+extern counter
+
+
+
+{
+    /***
+     * A counter object is created by calling its constructor.  This
+     * creates an array of counter states, with the number of counter
+     * states specified by the size parameter.  The array indices are
+     * in the range [0, size-1].
+     *
+     * You must provide a choice of whether to maintain only a packet
+     * count (CounterType.packets), only a byte count
+     * (CounterType.bytes), or both (CounterType.packets_and_bytes).
+     *
+     * Counters can be updated from your P4 program, but can only be
+     * read from the control plane.  If you need something that can be
+     * both read and written from the P4 program, consider using a
+     * register.
+     */
+    counter(bit<32> size, CounterType type);
+    // FIXME -- size arg should be `int` but that breaks typechecking
+
+    /***
+     * count() causes the counter state with the specified index to be
+     * read, modified, and written back, atomically relative to the
+     * processing of other packets, updating the packet count, byte
+     * count, or both, depending upon the CounterType of the counter
+     * instance used when it was constructed.
+     *
+     * @param index The index of the counter state in the array to be
+     *              updated, normally a value in the range [0,
+     *              size-1].  If index >= size, no counter state will be
+     *              updated.
+     */
+
+
+
+    void count(in bit<32> index);
+
+}
+
+extern direct_counter {
+    /***
+     * A direct_counter object is created by calling its constructor.
+     * You must provide a choice of whether to maintain only a packet
+     * count (CounterType.packets), only a byte count
+     * (CounterType.bytes), or both (CounterType.packets_and_bytes).
+     * After constructing the object, you can associate it with at
+     * most one table, by adding the following table property to the
+     * definition of that table:
+     *
+     *     counters = <object_name>;
+     *
+     * Counters can be updated from your P4 program, but can only be
+     * read from the control plane.  If you need something that can be
+     * both read and written from the P4 program, consider using a
+     * register.
+     */
+    direct_counter(CounterType type);
+    /***
+     * The count() method is actually unnecessary in the v1model
+     * architecture.  This is because after a direct_counter object
+     * has been associated with a table as described in the
+     * documentation for the direct_counter constructor, every time
+     * the table is applied and a table entry is matched, the counter
+     * state associated with the matching entry is read, modified, and
+     * written back, atomically relative to the processing of other
+     * packets, regardless of whether the count() method is called in
+     * the body of that action.
+     */
+    void count();
+}
+
+
+
+
+
+extern meter
+
+
+
+{
+    /***
+     * A meter object is created by calling its constructor.  This
+     * creates an array of meter states, with the number of meter
+     * states specified by the size parameter.  The array indices are
+     * in the range [0, size-1].  For example, if in your system you
+     * have 128 different "flows" numbered from 0 up to 127, and you
+     * want to meter each of those flows independently of each other,
+     * you could do so by creating a meter object with size=128.
+     *
+     * You must provide a choice of whether to meter based on the
+     * number of packets, regardless of their size
+     * (MeterType.packets), or based upon the number of bytes the
+     * packets contain (MeterType.bytes).
+     */
+    meter(bit<32> size, MeterType type);
+    // FIXME -- size arg should be `int` but that breaks typechecking
+
+    /***
+     * execute_meter() causes the meter state with the specified index
+     * to be read, modified, and written back, atomically relative to
+     * the processing of other packets, and an integer encoding of one
+     * of the colors green, yellow, or red to be written to the result
+     * out parameter.
+     *
+     * @param index The index of the meter state in the array to be
+     *              updated, normally a value in the range [0,
+     *              size-1].  If index >= size, no meter state will be
+     *              updated.
+     * @param result Type T must be bit<W> with W >= 2.  When index is
+     *              in range, the value of result will be assigned 0
+     *              for color GREEN, 1 for color YELLOW, and 2 for
+     *              color RED (see RFC 2697 and RFC 2698 for the
+     *              meaning of these colors).  When index is out of
+     *              range, the final value of result is not specified,
+     *              and should be ignored by the caller.
+     */
+
+
+
+    void execute_meter<T>(in bit<32> index, out T result);
+
+}
+
+extern direct_meter<T> {
+    /***
+     * A direct_meter object is created by calling its constructor.
+     * You must provide a choice of whether to meter based on the
+     * number of packets, regardless of their size
+     * (MeterType.packets), or based upon the number of bytes the
+     * packets contain (MeterType.bytes).  After constructing the
+     * object, you can associate it with at most one table, by adding
+     * the following table property to the definition of that table:
+     *
+     *     meters = <object_name>;
+     */
+    direct_meter(MeterType type);
+    /***
+     * After a direct_meter object has been associated with a table as
+     * described in the documentation for the direct_meter
+     * constructor, every time the table is applied and a table entry
+     * is matched, the meter state associated with the matching entry
+     * is read, modified, and written back, atomically relative to the
+     * processing of other packets, regardless of whether the read()
+     * method is called in the body of that action.
+     *
+     * read() may only be called within an action executed as a result
+     * of matching a table entry, of a table that has a direct_meter
+     * associated with it.  Calling read() causes an integer encoding
+     * of one of the colors green, yellow, or red to be written to the
+     * result out parameter.
+     *
+     * @param result Type T must be bit<W> with W >= 2.  The value of
+     *              result will be assigned 0 for color GREEN, 1 for
+     *              color YELLOW, and 2 for color RED (see RFC 2697
+     *              and RFC 2698 for the meaning of these colors).
+     */
+    void read(out T result);
+}
+
+
+
+
+extern register<T>
+
+{
+    /***
+     * A register object is created by calling its constructor.  This
+     * creates an array of 'size' identical elements, each with type
+     * T.  The array indices are in the range [0, size-1].  For
+     * example, this constructor call:
+     *
+     *     register<bit<32>>(512) my_reg;
+     *
+     * allocates storage for 512 values, each with type bit<32>.
+     */
+    register(bit<32> size); // FIXME -- arg should be `int` but that breaks typechecking
+    /***
+     * read() reads the state of the register array stored at the
+     * specified index, and returns it as the value written to the
+     * result parameter.
+     *
+     * @param index The index of the register array element to be
+     *              read, normally a value in the range [0, size-1].
+     * @param result Only types T that are bit<W> are currently
+     *              supported.  When index is in range, the value of
+     *              result becomes the value read from the register
+     *              array element.  When index >= size, the final
+     *              value of result is not specified, and should be
+     *              ignored by the caller.
+     */
+    @noSideEffects
+
+
+
+    void read(out T result, in bit<32> index);
+
+    /***
+     * write() writes the state of the register array at the specified
+     * index, with the value provided by the value parameter.
+     *
+     * If you wish to perform a read() followed later by a write() to
+     * the same register array element, and you wish the
+     * read-modify-write sequence to be atomic relative to other
+     * processed packets, then there may be parallel implementations
+     * of the v1model architecture for which you must execute them in
+     * a P4_16 block annotated with an @atomic annotation.  See the
+     * P4_16 language specification description of the @atomic
+     * annotation for more details.
+     *
+     * @param index The index of the register array element to be
+     *              written, normally a value in the range [0,
+     *              size-1].  If index >= size, no register state will
+     *              be updated.
+     * @param value Only types T that are bit<W> are currently
+     *              supported.  When index is in range, this
+     *              parameter's value is written into the register
+     *              array element specified by index.
+     */
+
+
+
+    void write(in bit<32> index, in T value);
+
+}
+
+// used as table implementation attribute
+extern action_profile {
+    action_profile(bit<32> size);
+}
+
+/***
+ * Generate a random number in the range lo..hi, inclusive, and write
+ * it to the result parameter.  The value written to result is not
+ * specified if lo > hi.
+ *
+ * @param T          Must be a type bit<W>
+ */
+extern void random<T>(out T result, in T lo, in T hi);
+
+/***
+ * Calling digest causes a message containing the values specified in
+ * the data parameter to be sent to the control plane software.  It is
+ * similar to sending a clone of the packet to the control plane
+ * software, except that it can be more efficient because the messages
+ * are typically smaller than packets, and many such small digest
+ * messages are typically coalesced together into a larger "batch"
+ * which the control plane software processes all at once.
+ *
+ * The value of the fields that are sent in the message to the control
+ * plane is the value they have at the time the digest call occurs,
+ * even if those field values are changed by later ingress control
+ * code.  See Note 3.
+ *
+ * Calling digest is only supported in the ingress control.  There is
+ * no way to undo its effects once it has been called.
+ *
+ * If the type T is a named struct, the name is used to generate the
+ * control plane API.
+ *
+ * The BMv2 implementation of the v1model architecture ignores the
+ * value of the receiver parameter.
+ */
+extern void digest<T>(in bit<32> receiver, in T data);
+
+enum HashAlgorithm {
+    crc32,
+    crc32_custom,
+    crc16,
+    crc16_custom,
+    random,
+    identity,
+    csum16,
+    xor16
+}
+
+@deprecated("Please use mark_to_drop(standard_metadata) instead.")
+extern void mark_to_drop();
+
+/***
+ * mark_to_drop(standard_metadata) is a primitive action that modifies
+ * standard_metadata.egress_spec to an implementation-specific special
+ * value that in some cases causes the packet to be dropped at the end
+ * of ingress or egress processing.  It also assigns 0 to
+ * standard_metadata.mcast_grp.  Either of those metadata fields may
+ * be changed by executing later P4 code, after calling
+ * mark_to_drop(), and this can change the resulting behavior of the
+ * packet to do something other than drop.
+ *
+ * See
+ * https://github.com/p4lang/behavioral-model/blob/main/docs/simple_switch.md
+ * -- in particular the section "Pseudocode for what happens at the
+ * end of ingress and egress processing" -- for the relative priority
+ * of the different possible things that can happen to a packet when
+ * ingress and egress processing are complete.
+ */
+@pure
+extern void mark_to_drop(inout standard_metadata_t standard_metadata);
+
+/***
+ * Calculate a hash function of the value specified by the data
+ * parameter.  The value written to the out parameter named result
+ * will always be in the range [base, base+max-1] inclusive, if max >=
+ * 1.  If max=0, the value written to result will always be base.
+ *
+ * Note that the types of all of the parameters may be the same as, or
+ * different from, each other, and thus their bit widths are allowed
+ * to be different.
+ *
+ * @param O          Must be a type bit<W>
+ * @param D          Must be a tuple type where all the fields are bit-fields (type bit<W> or int<W>) or varbits.
+ * @param T          Must be a type bit<W>
+ * @param M          Must be a type bit<W>
+ */
+@pure
+extern void hash<O, T, D, M>(out O result, in HashAlgorithm algo, in T base, in D data, in M max);
+
+extern action_selector {
+    action_selector(HashAlgorithm algorithm, bit<32> size, bit<32> outputWidth);
+}
+
+enum CloneType {
+    I2E,
+    E2E
+}
+
+@deprecated("Please use verify_checksum/update_checksum instead.")
+extern Checksum16 {
+    Checksum16();
+    bit<16> get<D>(in D data);
+}
+
+/***
+ * Verifies the checksum of the supplied data.  If this method detects
+ * that a checksum of the data is not correct, then the value of the
+ * standard_metadata checksum_error field will be equal to 1 when the
+ * packet begins ingress processing.
+ *
+ * Calling verify_checksum is only supported in the VerifyChecksum
+ * control.
+ *
+ * @param T          Must be a tuple type where all the tuple elements
+ *                   are of type bit<W>, int<W>, or varbit<W>.  The
+ *                   total length of the fields must be a multiple of
+ *                   the output size.
+ * @param O          Checksum type; must be bit<X> type.
+ * @param condition  If 'false' the verification always succeeds.
+ * @param data       Data whose checksum is verified.
+ * @param checksum   Expected checksum of the data; note that it must
+ *                   be a left-value.
+ * @param algo       Algorithm to use for checksum (not all algorithms
+ *                   may be supported).  Must be a compile-time
+ *                   constant.
+ */
+extern void verify_checksum<T, O>(in bool condition, in T data, in O checksum, HashAlgorithm algo);
+
+/***
+ * Computes the checksum of the supplied data and writes it to the
+ * checksum parameter.
+ *
+ * Calling update_checksum is only supported in the ComputeChecksum
+ * control.
+ *
+ * @param T          Must be a tuple type where all the tuple elements
+ *                   are of type bit<W>, int<W>, or varbit<W>.  The
+ *                   total length of the fields must be a multiple of
+ *                   the output size.
+ * @param O          Output type; must be bit<X> type.
+ * @param condition  If 'false' the checksum parameter is not changed
+ * @param data       Data whose checksum is computed.
+ * @param checksum   Checksum of the data.
+ * @param algo       Algorithm to use for checksum (not all algorithms
+ *                   may be supported).  Must be a compile-time
+ *                   constant.
+ */
+@pure
+extern void update_checksum<T, O>(in bool condition, in T data, inout O checksum, HashAlgorithm algo);
+
+/***
+ * verify_checksum_with_payload is identical in all ways to
+ * verify_checksum, except that it includes the payload of the packet
+ * in the checksum calculation.  The payload is defined as "all bytes
+ * of the packet which were not parsed by the parser".
+ *
+ * Calling verify_checksum_with_payload is only supported in the
+ * VerifyChecksum control.
+ */
+extern void verify_checksum_with_payload<T, O>(in bool condition, in T data, in O checksum, HashAlgorithm algo);
+
+/**
+ * update_checksum_with_payload is identical in all ways to
+ * update_checksum, except that it includes the payload of the packet
+ * in the checksum calculation.  The payload is defined as "all bytes
+ * of the packet which were not parsed by the parser".
+ *
+ * Calling update_checksum_with_payload is only supported in the
+ * ComputeChecksum control.
+ */
+@noSideEffects
+extern void update_checksum_with_payload<T, O>(in bool condition, in T data, inout O checksum, HashAlgorithm algo);
+
+/***
+ * clone is in most ways identical to the clone_preserving_field_list
+ * operation, with the only difference being that it never preserves
+ * any user-defined metadata fields with the cloned packet.  It is
+ * equivalent to calling clone_preserving_field_list with the same
+ * type and session parameter values, with empty data.
+ */
+extern void clone(in CloneType type, in bit<32> session);
+
+@deprecated("Please use 'resubmit_preserving_field_list' instead")
+extern void resubmit<T>(in T data);
+/***
+ * Calling resubmit_preserving_field_list during execution of the
+ * ingress control will cause the packet to be resubmitted, i.e. it
+ * will begin processing again with the parser, with the contents of
+ * the packet exactly as they were when it last began parsing.  The
+ * only difference is in the value of the standard_metadata
+ * instance_type field, and any user-defined metadata fields that the
+ * resubmit_preserving_field_list operation causes to be preserved.
+ *
+ * The user metadata fields that are tagged with @field_list(index) will
+ * be sent to the parser together with the packet.
+ *
+ * Calling resubmit_preserving_field_list is only supported in the
+ * ingress control.  There is no way to undo its effects once it has
+ * been called.  If resubmit_preserving_field_list is called multiple
+ * times during a single execution of the ingress control, only one
+ * packet is resubmitted, and only the user-defined metadata fields
+ * specified by the field list index from the last such call are
+ * preserved.  See the v1model architecture documentation (Note 1) for
+ * more details.
+ *
+ * For example, the user metadata fields can be annotated as follows:
+ * struct UM {
+ *    @field_list(1)
+ *    bit<32> x;
+ *    @field_list(1, 2)
+ *    bit<32> y;
+ *    bit<32> z;
+ * }
+ *
+ * Calling resubmit_preserving_field_list(1) will resubmit the packet
+ * and preserve fields x and y of the user metadata.  Calling
+ * resubmit_preserving_field_list(2) will only preserve field y.
+ */
+extern void resubmit_preserving_field_list(bit<8> index);
+
+@deprecated("Please use 'recirculate_preserving_field_list' instead")
+extern void recirculate<T>(in T data);
+/***
+ * Calling recirculate_preserving_field_list during execution of the
+ * egress control will cause the packet to be recirculated, i.e. it
+ * will begin processing again with the parser, with the contents of
+ * the packet as they are created by the deparser.  Recirculated
+ * packets can be distinguished from new packets in ingress processing
+ * by the value of the standard_metadata instance_type field.  The
+ * caller may request that some user-defined metadata fields be
+ * preserved with the recirculated packet.
+ *
+ * The user metadata fields that are tagged with @field_list(index) will be
+ * sent to the parser together with the packet.
+ *
+ * Calling recirculate_preserving_field_list is only supported in the
+ * egress control.  There is no way to undo its effects once it has
+ * been called.  If recirculate_preserving_field_list is called
+ * multiple times during a single execution of the egress control,
+ * only one packet is recirculated, and only the user-defined metadata
+ * fields specified by the field list index from the last such call
+ * are preserved.  See the v1model architecture documentation (Note 1)
+ * for more details.
+ */
+extern void recirculate_preserving_field_list(bit<8> index);
+
+@deprecated("Please use 'clone_preserving_field_list' instead")
+extern void clone3<T>(in CloneType type, in bit<32> session, in T data);
+
+/***
+ * Calling clone_preserving_field_list during execution of the ingress
+ * or egress control will cause the packet to be cloned, sometimes
+ * also called mirroring, i.e. zero or more copies of the packet are
+ * made, and each will later begin egress processing as an independent
+ * packet from the original packet.  The original packet continues
+ * with its normal next steps independent of the clone(s).
+ *
+ * The session parameter is an integer identifying a clone session id
+ * (sometimes called a mirror session id).  The control plane software
+ * must configure each session you wish to use, or else no clones will
+ * be made using that session.  Typically this will involve the
+ * control plane software specifying one output port to which the
+ * cloned packet should be sent, or a list of (port, egress_rid) pairs
+ * to which a separate clone should be created for each, similar to
+ * multicast packets.
+ *
+ * Cloned packets can be distinguished from others by the value of the
+ * standard_metadata instance_type field.
+ *
+ * The user metadata fields that are tagged with @field_list(index) will be
+ * sent to the parser together with a clone of the packet.
+ *
+ * If clone_preserving_field_list is called during ingress processing,
+ * the first parameter must be CloneType.I2E.  If
+ * clone_preserving_field_list is called during egress processing, the
+ * first parameter must be CloneType.E2E.
+ *
+ * There is no way to undo its effects once it has been called.  If
+ * there are multiple calls to clone_preserving_field_list and/or
+ * clone during a single execution of the same ingress (or egress)
+ * control, only the last clone session and index are used.  See the
+ * v1model architecture documentation (Note 1) for more details.
+ */
+extern void clone_preserving_field_list(in CloneType type, in bit<32> session, bit<8> index);
+
+extern void truncate(in bit<32> length);
+
+/***
+ * Calling assert when the argument is true has no effect, except any
+ * effect that might occur due to evaluation of the argument (but see
+ * below).  If the argument is false, the precise behavior is
+ * target-specific, but the intent is to record or log which assert
+ * statement failed, and optionally other information about the
+ * failure.
+ *
+ * For example, on the simple_switch target, executing an assert
+ * statement with a false argument causes a log message with the file
+ * name and line number of the assert statement to be printed, and
+ * then the simple_switch process exits.
+ *
+ * If you provide the --ndebug command line option to p4c when
+ * compiling, the compiled program behaves as if all assert statements
+ * were not present in the source code.
+ *
+ * We strongly recommend that you avoid using expressions as an
+ * argument to an assert call that can have side effects, e.g. an
+ * extern method or function call that has side effects.  p4c will
+ * allow you to do this with no warning given.  We recommend this
+ * because, if you follow this advice, your program will behave the
+ * same way when assert statements are removed.
+ */
+extern void assert(in bool check);
+
+/***
+ * For the purposes of compiling and executing P4 programs on a target
+ * device, assert and assume are identical, including the use of the
+ * --ndebug p4c option to elide them.  See documentation for assert.
+ *
+ * The reason that assume exists as a separate function from assert is
+ * because they are expected to be used differently by formal
+ * verification tools.  For some formal tools, the goal is to try to
+ * find example packets and sets of installed table entries that cause
+ * an assert statement condition to be false.
+ *
+ * Suppose you run such a tool on your program, and the example packet
+ * given is an MPLS packet, i.e. hdr.ethernet.etherType == 0x8847.
+ * You look at the example, and indeed it does cause an assert
+ * condition to be false.  However, your plan is to deploy your P4
+ * program in a network in places where no MPLS packets can occur.
+ * You could add extra conditions to your P4 program to handle the
+ * processing of such a packet cleanly, without assertions failing,
+ * but you would prefer to tell the tool "such example packets are not
+ * applicable in my scenario -- never show them to me".  By adding a
+ * statement:
+ *
+ *     assume(hdr.ethernet.etherType != 0x8847);
+ *
+ * at an appropriate place in your program, the formal tool should
+ * never show you such examples -- only ones that make all such assume
+ * conditions true.
+ *
+ * The reason that assume statements behave the same as assert
+ * statements when compiled to a target device is that if the
+ * condition ever evaluates to false when operating in a network, it
+ * is likely that your assumption was wrong, and should be reexamined.
+ */
+extern void assume(in bool check);
+
+/*
+ * Log user defined messages
+ * Example: log_msg("User defined message");
+ * or log_msg("Value1 = {}, Value2 = {}",{value1, value2});
+ */
+extern void log_msg(string msg);
+extern void log_msg<T>(string msg, in T data);
+
+// The name 'standard_metadata' is reserved
+
+/*
+ * Architecture.
+ *
+ * M must be a struct.
+ *
+ * H must be a struct where every one if its members is of type
+ * header, header stack, or header_union.
+ */
+
+parser Parser<H, M>(packet_in b,
+                    out H parsedHdr,
+                    inout M meta,
+                    inout standard_metadata_t standard_metadata);
+
+/*
+ * The only legal statements in the body of the VerifyChecksum control
+ * are: block statements, calls to the verify_checksum and
+ * verify_checksum_with_payload methods, and return statements.
+ */
+control VerifyChecksum<H, M>(inout H hdr,
+                             inout M meta);
+@pipeline
+control Ingress<H, M>(inout H hdr,
+                      inout M meta,
+                      inout standard_metadata_t standard_metadata);
+@pipeline
+control Egress<H, M>(inout H hdr,
+                     inout M meta,
+                     inout standard_metadata_t standard_metadata);
+
+/*
+ * The only legal statements in the body of the ComputeChecksum
+ * control are: block statements, calls to the update_checksum and
+ * update_checksum_with_payload methods, and return statements.
+ */
+control ComputeChecksum<H, M>(inout H hdr,
+                              inout M meta);
+
+/*
+ * The only legal statements in the body of the Deparser control are:
+ * calls to the packet_out.emit() method.
+ */
+@deparser
+control Deparser<H>(packet_out b, in H hdr);
+
+package V1Switch<H, M>(Parser<H, M> p,
+                       VerifyChecksum<H, M> vr,
+                       Ingress<H, M> ig,
+                       Egress<H, M> eg,
+                       ComputeChecksum<H, M> ck,
+                       Deparser<H> dep
+                       );
+# 4 "p4/rf_new_time.p4" 2
+
+/* CONSTANTS */
+
+const bit<16> TYPE_IPV4 = 0x800;
+const bit<8> TYPE_TCP = 6;
+const bit<8> TYPE_UDP = 17;
+
+/************************ header field constants ************************/
+/************************************************************************/
+
+
+
+
+/************************ constants for flow feature bits ************************/
+/*********************************************************************************/
+// FLOW_SIZE_BITS has to adapt to the total bit length of flow struct.
+// If the length is incorrect, the console will return error and give the correct value.
+
+
+// The value of FLOW_TIME_BITS should be the same as standard_metadata.ingress_global_timestamp which has 48 bits
+
+// The value of FLOW_BYTES_BITS should be the same length of standard_metadata.packet_length which has 32 bits
+
+
+
+
+// MAX_FEATURE_SIZE_BITS has at least to be 4 bits larger than the maximal bit length of features.
+// (increase one-decimal precision)
+
+
+
+
+
+/************************ other constants ************************/
+/*****************************************************************/
+// size of register to save flow features
+
+// number of bidirectional packet which is considered to classify flow
+
+// timeout to expire flow entries in the register (maximum bidirectional duration of dataset is 1799965000 microseconds)
+// set the timeout to 30 mins == 1800000000 microseconds
+
+
+
+// the maxmum gini value is 0.5 (2 classes).
+// This value has been amplified by a factor of 1000 to improve the precision from Python.
+// needs 9 bits to store the maximum value 500
+
+// The maximum value of the gini value is 500.   
+
+
+// bit length of message sent to the controller
+
+
+// packet sent to this port will be delivered to the controller
+
+
+
+
+
+/*************************************************************************
+*********************** H E A D E R S  ***********************************
+*************************************************************************/
+
+typedef bit<9> egressSpec_t;
+typedef bit<48> macAddr_t;
+typedef bit<32> ip4Addr_t;
+
+// the size should be larger than the maximal vlaue of id.
+enum bit<16> FeatureId {
+    bidirectional_first_seen_ms_id = 111,
+    bidirectional_last_seen_ms_id = 112,
+    bidirectional_duration_ms_id = 113,
+    bidirectional_packets_id = 114,
+    bidirectional_bytes_id = 115,
+    src2dst_first_seen_ms_id = 211,
+    src2dst_last_seen_ms_id = 212,
+    src2dst_duration_ms_id = 213,
+    src2dst_packets_id = 214,
+    src2dst_bytes_id = 215,
+    dst2src_first_seen_ms_id = 311,
+    dst2src_last_seen_ms_id = 312,
+    dst2src_duration_ms_id = 313,
+    dst2src_packets_id = 314,
+    dst2src_bytes_id = 315,
+
+    bidirectional_min_ps_id = 121,
+    bidirectional_mean_ps_id = 122,
+    bidirectional_stddev_ps_id = 123,
+    bidirectional_max_ps_id = 124,
+    src2dst_min_ps_id = 221,
+    src2dst_mean_ps_id = 222,
+    src2dst_stddev_ps_id = 223,
+    src2dst_max_ps_id = 224,
+    dst2src_min_ps_id = 321,
+    dst2src_mean_ps_id = 322,
+    dst2src_stddev_ps_id = 323,
+    dst2src_max_ps_id = 324,
+
+    bidirectional_min_piat_ms_id = 131,
+    bidirectional_mean_piat_ms_id = 132,
+    bidirectional_stddev_piat_ms_id = 133,
+    bidirectional_max_piat_ms_id = 134,
+    src2dst_min_piat_ms_id = 231,
+    src2dst_mean_piat_ms_id = 232,
+    src2dst_stddev_piat_ms_id = 233,
+    src2dst_max_piat_ms_id = 234,
+    dst2src_min_piat_ms_id = 331,
+    dst2src_mean_piat_ms_id = 332,
+    dst2src_stddev_piat_ms_id = 333,
+    dst2src_max_piat_ms_id = 334,
+
+    bidirectional_syn_packets_id = 141,
+    bidirectional_cwr_packets_id = 142,
+    bidirectional_ece_packets_id = 143,
+    bidirectional_urg_packets_id = 144,
+    bidirectional_ack_packets_id = 145,
+    bidirectional_psh_packets_id = 146,
+    bidirectional_rst_packets_id = 147,
+    bidirectional_fin_packets_id = 148,
+    src2dst_syn_packets_id = 241,
+    src2dst_cwr_packets_id = 242,
+    src2dst_ece_packets_id = 243,
+    src2dst_urg_packets_id = 244,
+    src2dst_ack_packets_id = 245,
+    src2dst_psh_packets_id = 246,
+    src2dst_rst_packets_id = 247,
+    src2dst_fin_packets_id = 248,
+    dst2src_syn_packets_id = 341,
+    dst2src_cwr_packets_id = 342,
+    dst2src_ece_packets_id = 343,
+    dst2src_urg_packets_id = 344,
+    dst2src_ack_packets_id = 345,
+    dst2src_psh_packets_id = 346,
+    dst2src_rst_packets_id = 347,
+    dst2src_fin_packets_id = 348,
+
+    protocol_1_id = 415,
+    protocol_2_id = 416,
+    protocol_6_id = 417,
+    protocol_17_id = 418,
+    protocol_58_id = 419,
+    protocol_132_id = 420,
+
+    splt_piat_ms_1_id = 511,
+    splt_piat_ms_2_id = 512,
+    splt_piat_ms_3_id = 513,
+    splt_piat_ms_4_id = 514,
+    splt_piat_ms_5_id = 515,
+    splt_piat_ms_6_id = 516,
+    splt_piat_ms_7_id = 517,
+    splt_piat_ms_8_id = 518,
+    splt_ps_1_id = 521,
+    splt_ps_2_id = 522,
+    splt_ps_3_id = 523,
+    splt_ps_4_id = 524,
+    splt_ps_5_id = 525,
+    splt_ps_6_id = 526,
+    splt_ps_7_id = 527,
+    splt_ps_8_id = 528,
+    splt_direction_1_0_id = 5310,
+    splt_direction_1_1_id = 5311,
+    splt_direction_1_2_id = 5312,
+    splt_direction_2_0_id = 5320,
+    splt_direction_2_1_id = 5321,
+    splt_direction_2_2_id = 5322,
+    splt_direction_3_0_id = 5330,
+    splt_direction_3_1_id = 5331,
+    splt_direction_3_2_id = 5332,
+    splt_direction_4_0_id = 5340,
+    splt_direction_4_1_id = 5341,
+    splt_direction_4_2_id = 5342,
+    splt_direction_5_0_id = 5350,
+    splt_direction_5_1_id = 5351,
+    splt_direction_5_2_id = 5352,
+    splt_direction_6_0_id = 5360,
+    splt_direction_6_1_id = 5361,
+    splt_direction_6_2_id = 5362,
+    splt_direction_7_0_id = 5370,
+    splt_direction_7_1_id = 5371,
+    splt_direction_7_2_id = 5372,
+    splt_direction_8_0_id = 5380,
+    splt_direction_8_1_id = 5381,
+    splt_direction_8_2_id = 5382
+}
+
+// map ip address to integer, used to set the real label of flow
+enum bit<32> IP2int {
+    id_172_16_0_1 = 2886729729,
+    id_192_168_10_8 = 3232238088,
+    id_192_168_10_12 = 3232238092,
+    id_205_174_165_73 = 3450774857,
+    id_192_168_10_14 = 3232238094,
+    id_52_6_13_28 = 872811804,
+    id_192_168_10_15 = 3232238095,
+    id_192_168_10_9 = 3232238089,
+    id_192_168_10_17 = 3232238097,
+    id_192_168_10_50 = 3232238130,
+    id_192_168_10_5 = 3232238085,
+    id_52_7_235_158 = 872934302
+}
+
+
+// packetIn is the packet sent from switch to controller. (from controller view)
+// packetOut is the packet sent from controller to switch. (from controller view)
+enum bit<8> ControllerPacketType_t {
+    PACKET_IN = 1,
+    PACKET_OUT = 2
+}
+
+enum bit<8> ControllerOpcode_t {
+    NO_OP = 0,
+    CLASSIFY_REQUEST = 1,
+    CLASSIFY_RESPONSE = 2
+}
+
+
+header ethernet_t {
+    macAddr_t dstAddr;
+    macAddr_t srcAddr;
+    bit<16> etherType;
+}
+
+header ipv4_t {
+    bit<4> version;
+    bit<4> ihl;
+    bit<8> diffserv;
+    bit<16> totalLen;
+    bit<16> identification;
+    bit<3> flags;
+    bit<13> fragOffset;
+    bit<8> ttl;
+    bit<8> protocol;
+    bit<16> hdrChecksum;
+    ip4Addr_t srcAddr;
+    ip4Addr_t dstAddr;
+}
+
+header udp_t {
+    bit<16> srcPort;
+    bit<16> dstPort;
+    bit<16> len;
+    bit<16> checksum;
+}
+
+header tcp_t{
+    bit<16> srcPort;
+    bit<16> dstPort;
+    bit<32> seqNo;
+    bit<32> ackNo;
+    bit<4> dataOffset;
+    bit<4> res;
+    bit<1> cwr;
+    bit<1> ece;
+    bit<1> urg;
+    bit<1> ack;
+    bit<1> psh;
+    bit<1> rst;
+    bit<1> syn;
+    bit<1> fin;
+    bit<16> window;
+    bit<16> checksum;
+    bit<16> urgentPtr;
+}
+
+
+// feature struct
+struct features_t {
+    bit<8> bidirectional_packets;
+    bit<32> bidirectional_bytes;
+    bit<48> bidirectional_first_seen_ms;
+    bit<8> src2dst_packets;
+    bit<32> src2dst_bytes;
+    bit<8> dst2src_packets;
+    bit<32> dst2src_bytes;
+    bit<32> bidirectional_min_ps;
+    bit<32> bidirectional_mean_ps;
+    bit<32> bidirectional_max_ps;
+    bit<32> src2dst_min_ps;
+    bit<32> src2dst_max_ps;
+    bit<32> dst2src_min_ps;
+    bit<32> dst2src_max_ps;
+    bit<8> bidirectional_syn_packets;
+    bit<8> bidirectional_cwr_packets;
+    bit<8> bidirectional_ece_packets;
+    bit<8> bidirectional_urg_packets;
+    bit<8> bidirectional_ack_packets;
+    bit<8> bidirectional_psh_packets;
+    bit<8> bidirectional_rst_packets;
+    bit<8> bidirectional_fin_packets;
+    bit<8> src2dst_syn_packets;
+    bit<8> src2dst_cwr_packets;
+    bit<8> src2dst_ece_packets;
+    bit<8> src2dst_urg_packets;
+    bit<8> src2dst_ack_packets;
+    bit<8> src2dst_psh_packets;
+    bit<8> src2dst_rst_packets;
+    bit<8> src2dst_fin_packets;
+    bit<8> dst2src_syn_packets;
+    bit<8> dst2src_cwr_packets;
+    bit<8> dst2src_ece_packets;
+    bit<8> dst2src_urg_packets;
+    bit<8> dst2src_ack_packets;
+    bit<8> dst2src_psh_packets;
+    bit<8> dst2src_rst_packets;
+    bit<8> dst2src_fin_packets;
+    bit<32> splt_ps_1;
+    bit<32> splt_ps_2;
+    bit<32> splt_ps_3;
+    bit<32> splt_ps_4;
+    bit<32> splt_ps_5;
+    bit<32> splt_ps_6;
+    bit<32> splt_ps_7;
+    bit<32> splt_ps_8;
+    bit<8> splt_direction_1_0;
+    bit<8> splt_direction_1_1;
+    bit<8> splt_direction_1_2;
+    bit<8> splt_direction_2_0;
+    bit<8> splt_direction_2_1;
+    bit<8> splt_direction_2_2;
+    bit<8> splt_direction_3_0;
+    bit<8> splt_direction_3_1;
+    bit<8> splt_direction_3_2;
+    bit<8> splt_direction_4_0;
+    bit<8> splt_direction_4_1;
+    bit<8> splt_direction_4_2;
+    bit<8> splt_direction_5_0;
+    bit<8> splt_direction_5_1;
+    bit<8> splt_direction_5_2;
+    bit<8> splt_direction_6_0;
+    bit<8> splt_direction_6_1;
+    bit<8> splt_direction_6_2;
+    bit<8> splt_direction_7_0;
+    bit<8> splt_direction_7_1;
+    bit<8> splt_direction_7_2;
+    bit<8> splt_direction_8_0;
+    bit<8> splt_direction_8_1;
+    bit<8> splt_direction_8_2;
+}
+
+// packet in and out header should be placed after struct feature_t
+// packet in header
+@controller_header("packet_in")
+header packet_in_header_t {
+    ControllerPacketType_t packet_type;
+    ControllerOpcode_t opcode;
+    bit<32> flow_id;
+    features_t features;
+}
+
+// packet out header
+@controller_header("packet_out")
+header packet_out_header_t {
+    ControllerPacketType_t packet_type;
+    ControllerOpcode_t opcode;
+    bit<32> flow_id;
+    // set the bit length of class to 1 bit, which is consistent with the feature class in a flow entry.
+    bit<1> class;
+    // the total header length should be a mutiple of 8 bits
+    bit<7> reserved;
+}
+
+// flow struct
+struct flow_t {
+    bit<32> flow_id;
+    ip4Addr_t src_ipv4_addr;
+    ip4Addr_t dst_ipv4_addr;
+    bit<16> src_port;
+    bit<16> dst_port;
+    bit<8> protocol;
+    bit<48> packet_8th_seen_ms;
+    bit<1> stored;
+    bit<1> classified;
+    bit<1> class;
+    bit<1> classified_tree_1;
+    bit<1> class_tree_1;
+    bit<1> classified_tree_2;
+    bit<1> class_tree_2;
+    bit<1> classified_tree_3;
+    bit<1> class_tree_3;
+    features_t features;
+}
+
+struct metadata {
+    flow_t flow;
+    bit<1225> bitstring;
+    bit<32> current_flow_id;
+    bit<1> is_dst2src;
+    bit<8> current_node_id;
+    bit<2> feature_larger_than_thr;
+    bit<16> gini_value_tree_1;
+    bit<16> gini_value_tree_2;
+    bit<16> gini_value_tree_3;
+    bit<8> leaf_node_id_tree_1;
+    bit<8> leaf_node_id_tree_2;
+    bit<8> leaf_node_id_tree_3;
+    bit<1> accumulate_time_p4_flag;
+}
+
+struct headers {
+    ethernet_t ethernet;
+    ipv4_t ipv4;
+    udp_t udp;
+    tcp_t tcp;
+    packet_in_header_t pkt_in;
+    packet_out_header_t pkt_out;
+}
+
+
+/*************************************************************************
+*********************** P A R S E R  ***********************************
+*************************************************************************/
+
+parser MyParser(packet_in packet,
+                out headers hdr,
+                inout metadata meta,
+                inout standard_metadata_t standard_metadata) {
+
+    state start {
+        transition parse_ingress_port;
+    }
+
+    state parse_ingress_port {
+        transition select(standard_metadata.ingress_port) {
+            101: parse_packet_from_controller;
+            default:parse_ethernet;
+        }
+    }
+
+    state parse_packet_from_controller {
+        packet.extract(hdr.pkt_out);
+        transition accept;
+    }
+
+    state parse_ethernet {
+        packet.extract(hdr.ethernet);
+        transition select(hdr.ethernet.etherType) {
+            TYPE_IPV4: parse_ipv4;
+            default: accept;
+        }
+    }
+
+    state parse_ipv4 {
+        packet.extract(hdr.ipv4);
+        transition select(hdr.ipv4.protocol) {
+            TYPE_UDP: parse_udp;
+            TYPE_TCP: parse_tcp;
+            default: accept;
+        }
+    }
+
+    state parse_udp {
+        packet.extract(hdr.udp);
+        transition accept;
+    }
+
+    state parse_tcp {
+        packet.extract(hdr.tcp);
+        transition accept;
+    }
+}
+
+/*************************************************************************
+************   C H E C K S U M    V E R I F I C A T I O N   *************
+*************************************************************************/
+
+control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
+    apply { }
+}
+
+
+/*************************************************************************
+**************  I N G R E S S   P R O C E S S I N G   *******************
+*************************************************************************/
+
+control MyIngress(inout headers hdr,
+                  inout metadata meta,
+                  inout standard_metadata_t standard_metadata) {
+
+    /*********************** register to store the flows ***********************/
+    // register to store the flow entries
+    // use hash function crc32
+    register<bit<1225>>(10000000) flow_buffer_32;
+
+    /*********************** control counters and registers ***********************/
+    register<bit<1>>(1) ___________________break_line___________________;
+
+    // counters for total, begign and attack flows
+    counter(1, CounterType.packets) flow_predicted_p4_sum_counter;
+    counter(1, CounterType.packets) flow_predicted_controller_sum_counter;
+    // counter for the number of flows with predicted class from the controller
+    counter(1, CounterType.packets) flow_from_controller_counter;
+    // store the sum of classification time in controller
+    register<bit<128>>(1) classification_time_controller_register;
+
+
+    /**
+    * get payload length 
+    **/
+    action get_payload_length(out bit<32> payload_length) {
+        payload_length = standard_metadata.packet_length - 14 - 20;
+        if (hdr.tcp.isValid()) {
+            payload_length = payload_length - ((bit<32>) hdr.tcp.dataOffset * 4);
+        } else if (hdr.udp.isValid()) {
+            payload_length = payload_length - 8;
+        }
+    }
+
+
+    /**
+    * initialize flow
+    **/
+    action init_flow() {
+        // Initially, the value of each feature is 0. Set all fields with the initialized value because of the refreshing register.
+        /*********************** initiate the flow entry ***********************/
+        meta.flow.flow_id = meta.current_flow_id;
+        // assign the source IP address to this flow entry, used to label flows (benign or attack)
+        meta.flow.src_ipv4_addr = hdr.ipv4.srcAddr;
+        meta.flow.dst_ipv4_addr = hdr.ipv4.dstAddr;
+        meta.flow.protocol = hdr.ipv4.protocol;
+        // src and dst ports are initialized in the apply block
+
+        meta.flow.stored = 1;
+        meta.flow.classified = 0;
+        meta.flow.class = 0;
+        meta.flow.classified_tree_1 = 0;
+        meta.flow.class_tree_1 = 0;
+        meta.flow.classified_tree_2 = 0;
+        meta.flow.class_tree_2 = 0;
+        meta.flow.classified_tree_3 = 0;
+        meta.flow.class_tree_3 = 0;
+
+        /*********************** initiate the core features ***********************/
+        // get payload length
+        bit<32> payload_length = 0;
+        get_payload_length(payload_length);
+
+        meta.flow.features.bidirectional_first_seen_ms = standard_metadata.ingress_global_timestamp;
+        meta.flow.features.bidirectional_packets = 1;
+        meta.flow.features.bidirectional_bytes = payload_length;
+        meta.flow.features.src2dst_packets = 1;
+        meta.flow.features.src2dst_bytes = payload_length;
+        meta.flow.features.dst2src_packets = 0;
+        meta.flow.features.dst2src_bytes = 0;
+
+        /*********************** initiate the post-mortem statistical features ***********************/
+        meta.flow.features.bidirectional_min_ps = payload_length;
+        meta.flow.features.bidirectional_mean_ps = payload_length;
+        meta.flow.features.bidirectional_max_ps = payload_length;
+        meta.flow.features.src2dst_min_ps = payload_length;
+        meta.flow.features.src2dst_max_ps = payload_length;
+        meta.flow.features.dst2src_min_ps = 0;
+        meta.flow.features.dst2src_max_ps = 0;
+
+        /*********************** initiate the flag features ***********************/
+        if (hdr.tcp.syn == 1) {
+            meta.flow.features.bidirectional_syn_packets = 1;
+            meta.flow.features.src2dst_syn_packets = 1;
+        } else {
+            meta.flow.features.bidirectional_syn_packets = 0;
+            meta.flow.features.src2dst_syn_packets = 0;
+        }
+
+        if (hdr.tcp.cwr == 1){
+            meta.flow.features.bidirectional_cwr_packets = 1;
+            meta.flow.features.src2dst_cwr_packets = 1;
+        } else {
+            meta.flow.features.bidirectional_cwr_packets = 0;
+            meta.flow.features.src2dst_cwr_packets = 0;
+        }
+
+        if (hdr.tcp.ece == 1){
+            meta.flow.features.bidirectional_ece_packets = 1;
+            meta.flow.features.src2dst_ece_packets = 1;
+        } else {
+            meta.flow.features.bidirectional_ece_packets = 0;
+            meta.flow.features.src2dst_ece_packets = 0;
+        }
+
+        if (hdr.tcp.urg == 1){
+            meta.flow.features.bidirectional_urg_packets = 1;
+            meta.flow.features.src2dst_urg_packets = 1;
+        } else {
+            meta.flow.features.bidirectional_urg_packets = 0;
+            meta.flow.features.src2dst_urg_packets = 0;
+        }
+
+        if (hdr.tcp.ack == 1){
+            meta.flow.features.bidirectional_ack_packets = 1;
+            meta.flow.features.src2dst_ack_packets = 1;
+        } else {
+            meta.flow.features.bidirectional_ack_packets = 0;
+            meta.flow.features.src2dst_ack_packets = 0;
+        }
+
+        if (hdr.tcp.psh == 1){
+            meta.flow.features.bidirectional_psh_packets = 1;
+            meta.flow.features.src2dst_psh_packets = 1;
+        } else {
+            meta.flow.features.bidirectional_psh_packets = 0;
+            meta.flow.features.src2dst_psh_packets = 0;
+        }
+
+        if (hdr.tcp.rst == 1){
+            meta.flow.features.bidirectional_rst_packets = 1;
+            meta.flow.features.src2dst_rst_packets = 1;
+        } else {
+            meta.flow.features.bidirectional_rst_packets = 0;
+            meta.flow.features.src2dst_rst_packets = 0;
+        }
+
+        if (hdr.tcp.fin == 1){
+            meta.flow.features.bidirectional_fin_packets = 1;
+            meta.flow.features.src2dst_fin_packets = 1;
+        } else {
+            meta.flow.features.bidirectional_fin_packets = 0;
+            meta.flow.features.src2dst_fin_packets = 0;
+        }
+
+        meta.flow.features.dst2src_syn_packets = 0;
+        meta.flow.features.dst2src_cwr_packets = 0;
+        meta.flow.features.dst2src_ece_packets = 0;
+        meta.flow.features.dst2src_urg_packets = 0;
+        meta.flow.features.dst2src_ack_packets = 0;
+        meta.flow.features.dst2src_psh_packets = 0;
+        meta.flow.features.dst2src_rst_packets = 0;
+        meta.flow.features.dst2src_fin_packets = 0;
+
+        /*********************** initiate the protocol features ***********************/
+        // if (hdr.ipv4.protocol == 1) {
+        //     meta.flow.features.protocol_1 = 1;
+        //     meta.flow.features.protocol_2 = 0;
+        //     meta.flow.features.protocol_6 = 0;
+        //     meta.flow.features.protocol_17 = 0;
+        //     meta.flow.features.protocol_58 = 0;
+        //     meta.flow.features.protocol_132 = 0;
+        // } else if (hdr.ipv4.protocol == 2) {
+        //     meta.flow.features.protocol_1 = 0;
+        //     meta.flow.features.protocol_2 = 1;
+        //     meta.flow.features.protocol_6 = 0;
+        //     meta.flow.features.protocol_17 = 0;
+        //     meta.flow.features.protocol_58 = 0;
+        //     meta.flow.features.protocol_132 = 0;
+        // } else if (hdr.ipv4.protocol == 6) {
+        //     meta.flow.features.protocol_1 = 0;
+        //     meta.flow.features.protocol_2 = 0;
+        //     meta.flow.features.protocol_6 = 1;
+        //     meta.flow.features.protocol_17 = 0;
+        //     meta.flow.features.protocol_58 = 0;
+        //     meta.flow.features.protocol_132 = 0;
+        // } else if (hdr.ipv4.protocol == 17) {
+        //     meta.flow.features.protocol_1 = 0;
+        //     meta.flow.features.protocol_2 = 0;
+        //     meta.flow.features.protocol_6 = 0;
+        //     meta.flow.features.protocol_17 = 1;
+        //     meta.flow.features.protocol_58 = 0;
+        //     meta.flow.features.protocol_132 = 0;
+        // } else if (hdr.ipv4.protocol == 58) {     
+        //     meta.flow.features.protocol_1 = 0;
+        //     meta.flow.features.protocol_2 = 0;
+        //     meta.flow.features.protocol_6 = 0;
+        //     meta.flow.features.protocol_17 = 0;
+        //     meta.flow.features.protocol_58 = 1;
+        //     meta.flow.features.protocol_132 = 0;
+        // } else if (hdr.ipv4.protocol == 132) {
+        //     meta.flow.features.protocol_1 = 0;
+        //     meta.flow.features.protocol_2 = 0;
+        //     meta.flow.features.protocol_6 = 0;
+        //     meta.flow.features.protocol_17 = 0;
+        //     meta.flow.features.protocol_58 = 0;
+        //     meta.flow.features.protocol_132 = 1;
+        // }
+
+        /*********************** initiate the splt features ***********************/
+        // we added 1 to each splt entry to avoid -1 both in ML python part and p4 part.
+
+        // NFStream: -1 when there is no packet
+        // Here: we add 1, so 0 indicates there is no packet. each entry should be added with 1.        
+        meta.flow.features.splt_ps_1 = payload_length + 1;
+        meta.flow.features.splt_ps_2 = 0;
+        meta.flow.features.splt_ps_3 = 0;
+        meta.flow.features.splt_ps_4 = 0;
+        meta.flow.features.splt_ps_5 = 0;
+        meta.flow.features.splt_ps_6 = 0;
+        meta.flow.features.splt_ps_7 = 0;
+        meta.flow.features.splt_ps_8 = 0;
+
+        // NFStream: 0: src2dst, 1: dst2src, -1:no packet
+        // Here: 1: src2dst, 2: dst2src, 0: no pacekt
+        // splt_direction is categorical feature with 3 values, use one-hot coding to mark them.
+        meta.flow.features.splt_direction_1_0 = 0;
+        meta.flow.features.splt_direction_1_1 = 1;
+        meta.flow.features.splt_direction_1_2 = 0;
+        meta.flow.features.splt_direction_2_0 = 1;
+        meta.flow.features.splt_direction_2_1 = 0;
+        meta.flow.features.splt_direction_2_2 = 0;
+        meta.flow.features.splt_direction_3_0 = 1;
+        meta.flow.features.splt_direction_3_1 = 0;
+        meta.flow.features.splt_direction_3_2 = 0;
+        meta.flow.features.splt_direction_4_0 = 1;
+        meta.flow.features.splt_direction_4_1 = 0;
+        meta.flow.features.splt_direction_4_2 = 0;
+        meta.flow.features.splt_direction_5_0 = 1;
+        meta.flow.features.splt_direction_5_1 = 0;
+        meta.flow.features.splt_direction_5_2 = 0;
+        meta.flow.features.splt_direction_6_0 = 1;
+        meta.flow.features.splt_direction_6_1 = 0;
+        meta.flow.features.splt_direction_6_2 = 0;
+        meta.flow.features.splt_direction_7_0 = 1;
+        meta.flow.features.splt_direction_7_1 = 0;
+        meta.flow.features.splt_direction_7_2 = 0;
+        meta.flow.features.splt_direction_8_0 = 1;
+        meta.flow.features.splt_direction_8_1 = 0;
+        meta.flow.features.splt_direction_8_2 = 0;
+    }
+
+
+    /**
+    * update the flow features
+    **/
+    action update_flow() {
+        // get payload length
+        bit<32> payload_length = 0;
+        get_payload_length(payload_length);
+
+        /*********************************************************************************/
+        /*********************** update the bidirectional features ***********************/
+        /*********************************************************************************/
+
+        /*********************** init of core features ***********************/
+        meta.flow.features.bidirectional_packets = meta.flow.features.bidirectional_packets + 1;
+        meta.flow.features.bidirectional_bytes = meta.flow.features.bidirectional_bytes + payload_length;
+
+        /*********************** init of post-mortem statistical features ***********************/
+        if (payload_length < meta.flow.features.bidirectional_min_ps) {
+            meta.flow.features.bidirectional_min_ps = payload_length;
+        }
+        if (payload_length > meta.flow.features.bidirectional_max_ps) {
+            meta.flow.features.bidirectional_max_ps = payload_length;
+        }
+        // if the number of bidirectional pacekts reachs the desired number, compute the mean value of bidirectional bytes 
+        // store the packet_8th_seen_ms
+        if (meta.flow.features.bidirectional_packets == 8) {
+            meta.flow.features.bidirectional_mean_ps = meta.flow.features.bidirectional_bytes >> 3;
+            meta.flow.packet_8th_seen_ms = standard_metadata.ingress_global_timestamp;
+
+        }
+
+        if (meta.is_dst2src == 1) {
+            /***************************************************************************/
+            /*********************** update the dst2src features ***********************/
+            /***************************************************************************/
+
+            /*********************** update the dst2src core features ***********************/
+            meta.flow.features.dst2src_packets = meta.flow.features.dst2src_packets + 1;
+            meta.flow.features.dst2src_bytes = meta.flow.features.dst2src_bytes + payload_length;
+
+            /*********************** update the dst2src post-mortem statistical features ***********************/
+            // initialize the dst2src_min_ps with the first dst2src pacekt
+            if (meta.flow.features.dst2src_packets == 1) {
+                meta.flow.features.dst2src_min_ps = payload_length;
+            } else if (payload_length < meta.flow.features.dst2src_min_ps) {
+                meta.flow.features.dst2src_min_ps = payload_length;
+            }
+
+            if (payload_length > meta.flow.features.dst2src_max_ps) {
+                meta.flow.features.dst2src_max_ps = payload_length;
+            }
+
+            /*********************** update the dst2src and bidirectional flag features ***********************/
+            if (hdr.tcp.syn == 1) {
+                meta.flow.features.dst2src_syn_packets = meta.flow.features.dst2src_syn_packets + 1;
+                meta.flow.features.bidirectional_syn_packets = meta.flow.features.bidirectional_syn_packets + 1;
+            }
+
+            if (hdr.tcp.cwr == 1){
+                meta.flow.features.dst2src_cwr_packets = meta.flow.features.dst2src_cwr_packets + 1;
+                meta.flow.features.bidirectional_cwr_packets = meta.flow.features.bidirectional_cwr_packets + 1;
+            }
+
+            if (hdr.tcp.ece == 1){
+                meta.flow.features.dst2src_ece_packets = meta.flow.features.dst2src_ece_packets + 1;
+                meta.flow.features.bidirectional_ece_packets = meta.flow.features.bidirectional_ece_packets + 1;
+            }
+
+            if (hdr.tcp.urg == 1){
+                meta.flow.features.dst2src_urg_packets = meta.flow.features.dst2src_urg_packets + 1;
+                meta.flow.features.bidirectional_urg_packets = meta.flow.features.bidirectional_urg_packets + 1;
+            }
+
+            if (hdr.tcp.ack == 1){
+                meta.flow.features.dst2src_ack_packets = meta.flow.features.dst2src_ack_packets + 1;
+                meta.flow.features.bidirectional_ack_packets = meta.flow.features.bidirectional_ack_packets + 1;
+            }
+
+            if (hdr.tcp.psh == 1){
+                meta.flow.features.dst2src_psh_packets = meta.flow.features.dst2src_psh_packets + 1;
+                meta.flow.features.bidirectional_psh_packets = meta.flow.features.bidirectional_psh_packets + 1;
+            }
+
+            if (hdr.tcp.rst == 1){
+                meta.flow.features.dst2src_rst_packets = meta.flow.features.dst2src_rst_packets + 1;
+                meta.flow.features.bidirectional_rst_packets = meta.flow.features.bidirectional_rst_packets + 1;
+            }
+
+            if (hdr.tcp.fin == 1){
+                meta.flow.features.dst2src_fin_packets = meta.flow.features.dst2src_fin_packets + 1;
+                meta.flow.features.bidirectional_fin_packets = meta.flow.features.bidirectional_fin_packets + 1;
+            }
+
+            /*********************** update the splt features ***********************/
+            // add 1 to each entry
+            if (meta.flow.features.bidirectional_packets == 2) {
+                meta.flow.features.splt_ps_2 = payload_length + 1;
+                meta.flow.features.splt_direction_2_0 = 0;
+                meta.flow.features.splt_direction_2_2 = 1;
+            } else if (meta.flow.features.bidirectional_packets == 3) {
+                meta.flow.features.splt_ps_3 = payload_length + 1;
+                meta.flow.features.splt_direction_3_0 = 0;
+                meta.flow.features.splt_direction_3_2 = 1;
+            } else if (meta.flow.features.bidirectional_packets == 4) {
+                meta.flow.features.splt_ps_4 = payload_length + 1;
+                meta.flow.features.splt_direction_4_0 = 0;
+                meta.flow.features.splt_direction_4_2 = 1;
+            } else if (meta.flow.features.bidirectional_packets == 5) {
+                meta.flow.features.splt_ps_5 = payload_length + 1;
+                meta.flow.features.splt_direction_5_0 = 0;
+                meta.flow.features.splt_direction_5_2 = 1;
+            } else if (meta.flow.features.bidirectional_packets == 6) {
+                meta.flow.features.splt_ps_6 = payload_length + 1;
+                meta.flow.features.splt_direction_6_0 = 0;
+                meta.flow.features.splt_direction_6_2 = 1;
+            } else if (meta.flow.features.bidirectional_packets == 7) {
+                meta.flow.features.splt_ps_7 = payload_length + 1;
+                meta.flow.features.splt_direction_7_0 = 0;
+                meta.flow.features.splt_direction_7_2 = 1;
+            } else if (meta.flow.features.bidirectional_packets == 8) {
+                meta.flow.features.splt_ps_8 = payload_length + 1;
+                meta.flow.features.splt_direction_8_0 = 0;
+                meta.flow.features.splt_direction_8_2 = 1;
+            }
+        } else {
+            /***************************************************************************/
+            /*********************** update the src2dst features ***********************/
+            /***************************************************************************/
+
+            /*********************** update the src2dst core features ***********************/
+            meta.flow.features.src2dst_packets = meta.flow.features.src2dst_packets + 1;
+            meta.flow.features.src2dst_bytes = meta.flow.features.src2dst_bytes + (bit<32>)payload_length;
+
+            /*********************** update the src2dst post-mortem statistical features ***********************/
+            if (payload_length < meta.flow.features.src2dst_min_ps){
+                meta.flow.features.src2dst_min_ps = payload_length;
+            }
+            if (payload_length > meta.flow.features.src2dst_max_ps) {
+                meta.flow.features.src2dst_max_ps = payload_length;
+            }
+
+            /*********************** update the src2dst and bidirectional flag features ***********************/
+            if (hdr.tcp.syn == 1) {
+                meta.flow.features.src2dst_syn_packets = meta.flow.features.src2dst_syn_packets + 1;
+                meta.flow.features.bidirectional_syn_packets = meta.flow.features.bidirectional_syn_packets + 1;
+            }
+
+            if (hdr.tcp.cwr == 1){
+                meta.flow.features.src2dst_cwr_packets = meta.flow.features.src2dst_cwr_packets + 1;
+                meta.flow.features.bidirectional_cwr_packets = meta.flow.features.bidirectional_cwr_packets + 1;
+            }
+
+            if (hdr.tcp.ece == 1){
+                meta.flow.features.src2dst_ece_packets = meta.flow.features.src2dst_ece_packets + 1;
+                meta.flow.features.bidirectional_ece_packets = meta.flow.features.bidirectional_ece_packets + 1;
+            }
+
+            if (hdr.tcp.urg == 1){
+                meta.flow.features.src2dst_urg_packets = meta.flow.features.src2dst_urg_packets + 1;
+                meta.flow.features.bidirectional_urg_packets = meta.flow.features.bidirectional_urg_packets + 1;
+            }
+
+            if (hdr.tcp.ack == 1){
+                meta.flow.features.src2dst_ack_packets = meta.flow.features.src2dst_ack_packets + 1;
+                meta.flow.features.bidirectional_ack_packets = meta.flow.features.bidirectional_ack_packets + 1;
+            }
+
+            if (hdr.tcp.psh == 1){
+                meta.flow.features.src2dst_psh_packets = meta.flow.features.src2dst_psh_packets + 1;
+                meta.flow.features.bidirectional_psh_packets = meta.flow.features.bidirectional_psh_packets + 1;
+            }
+
+            if (hdr.tcp.rst == 1){
+                meta.flow.features.src2dst_rst_packets = meta.flow.features.src2dst_rst_packets + 1;
+                meta.flow.features.bidirectional_rst_packets = meta.flow.features.bidirectional_rst_packets + 1;
+            }
+
+            if (hdr.tcp.fin == 1){
+                meta.flow.features.src2dst_fin_packets = meta.flow.features.src2dst_fin_packets + 1;
+                meta.flow.features.bidirectional_fin_packets = meta.flow.features.bidirectional_fin_packets + 1;
+            }
+
+            /*********************** update the splt features ***********************/
+            // add 1 to each entry
+            if (meta.flow.features.bidirectional_packets == 2) {
+                meta.flow.features.splt_ps_2 = payload_length + 1;
+                meta.flow.features.splt_direction_2_0 = 0;
+                meta.flow.features.splt_direction_2_1 = 1;
+            } else if (meta.flow.features.bidirectional_packets == 3) {
+                meta.flow.features.splt_ps_3 = payload_length + 1;
+                meta.flow.features.splt_direction_3_0 = 0;
+                meta.flow.features.splt_direction_3_1 = 1;
+            } else if (meta.flow.features.bidirectional_packets == 4) {
+                meta.flow.features.splt_ps_4 = payload_length + 1;
+                meta.flow.features.splt_direction_4_0 = 0;
+                meta.flow.features.splt_direction_4_1 = 1;
+            } else if (meta.flow.features.bidirectional_packets == 5) {
+                meta.flow.features.splt_ps_5 = payload_length + 1;
+                meta.flow.features.splt_direction_5_0 = 0;
+                meta.flow.features.splt_direction_5_1 = 1;
+            } else if (meta.flow.features.bidirectional_packets == 6) {
+                meta.flow.features.splt_ps_6 = payload_length + 1;
+                meta.flow.features.splt_direction_6_0 = 0;
+                meta.flow.features.splt_direction_6_1 = 1;
+            } else if (meta.flow.features.bidirectional_packets == 7) {
+                meta.flow.features.splt_ps_7 = payload_length + 1;
+                meta.flow.features.splt_direction_7_0 = 0;
+                meta.flow.features.splt_direction_7_1 = 1;
+            } else if (meta.flow.features.bidirectional_packets == 8) {
+                meta.flow.features.splt_ps_8 = payload_length + 1;
+                meta.flow.features.splt_direction_8_0 = 0;
+                meta.flow.features.splt_direction_8_1 = 1;
+            }
+        }
+    }
+
+
+
+    /**
+    * convert struct to bitstring, in order to store the states in the register
+    **/
+    action struct_to_bitstring() {
+        meta.bitstring = meta.flow.flow_id ++
+                            meta.flow.src_ipv4_addr ++
+                            meta.flow.dst_ipv4_addr ++
+                            meta.flow.src_port ++
+                            meta.flow.dst_port ++
+                            meta.flow.protocol ++
+                            meta.flow.packet_8th_seen_ms ++
+                            meta.flow.stored ++
+                            meta.flow.class ++
+                            meta.flow.classified ++
+                            meta.flow.class_tree_1 ++
+                            meta.flow.classified_tree_1 ++
+                            meta.flow.class_tree_2 ++
+                            meta.flow.classified_tree_2 ++
+                            meta.flow.class_tree_3 ++
+                            meta.flow.classified_tree_3 ++
+                            meta.flow.features.bidirectional_first_seen_ms ++
+                            meta.flow.features.bidirectional_packets ++
+                            meta.flow.features.bidirectional_bytes ++
+                            meta.flow.features.src2dst_packets ++
+                            meta.flow.features.src2dst_bytes ++
+                            meta.flow.features.dst2src_packets ++
+                            meta.flow.features.dst2src_bytes ++
+                            meta.flow.features.bidirectional_min_ps ++
+                            meta.flow.features.bidirectional_mean_ps ++
+                            meta.flow.features.bidirectional_max_ps ++
+                            meta.flow.features.src2dst_min_ps ++
+                            meta.flow.features.src2dst_max_ps ++
+                            meta.flow.features.dst2src_min_ps ++
+                            meta.flow.features.dst2src_max_ps ++
+                            meta.flow.features.bidirectional_syn_packets ++
+                            meta.flow.features.bidirectional_cwr_packets ++
+                            meta.flow.features.bidirectional_ece_packets ++
+                            meta.flow.features.bidirectional_urg_packets ++
+                            meta.flow.features.bidirectional_ack_packets ++
+                            meta.flow.features.bidirectional_psh_packets ++
+                            meta.flow.features.bidirectional_rst_packets ++
+                            meta.flow.features.bidirectional_fin_packets ++
+                            meta.flow.features.src2dst_syn_packets ++
+                            meta.flow.features.src2dst_cwr_packets ++
+                            meta.flow.features.src2dst_ece_packets ++
+                            meta.flow.features.src2dst_urg_packets ++
+                            meta.flow.features.src2dst_ack_packets ++
+                            meta.flow.features.src2dst_psh_packets ++
+                            meta.flow.features.src2dst_rst_packets ++
+                            meta.flow.features.src2dst_fin_packets ++
+                            meta.flow.features.dst2src_syn_packets ++
+                            meta.flow.features.dst2src_cwr_packets ++
+                            meta.flow.features.dst2src_ece_packets ++
+                            meta.flow.features.dst2src_urg_packets ++
+                            meta.flow.features.dst2src_ack_packets ++
+                            meta.flow.features.dst2src_psh_packets ++
+                            meta.flow.features.dst2src_rst_packets ++
+                            meta.flow.features.dst2src_fin_packets ++
+                            meta.flow.features.splt_ps_1 ++
+                            meta.flow.features.splt_ps_2 ++
+                            meta.flow.features.splt_ps_3 ++
+                            meta.flow.features.splt_ps_4 ++
+                            meta.flow.features.splt_ps_5 ++
+                            meta.flow.features.splt_ps_6 ++
+                            meta.flow.features.splt_ps_7 ++
+                            meta.flow.features.splt_ps_8 ++
+                            meta.flow.features.splt_direction_1_0 ++
+                            meta.flow.features.splt_direction_1_1 ++
+                            meta.flow.features.splt_direction_1_2 ++
+                            meta.flow.features.splt_direction_2_0 ++
+                            meta.flow.features.splt_direction_2_1 ++
+                            meta.flow.features.splt_direction_2_2 ++
+                            meta.flow.features.splt_direction_3_0 ++
+                            meta.flow.features.splt_direction_3_1 ++
+                            meta.flow.features.splt_direction_3_2 ++
+                            meta.flow.features.splt_direction_4_0 ++
+                            meta.flow.features.splt_direction_4_1 ++
+                            meta.flow.features.splt_direction_4_2 ++
+                            meta.flow.features.splt_direction_5_0 ++
+                            meta.flow.features.splt_direction_5_1 ++
+                            meta.flow.features.splt_direction_5_2 ++
+                            meta.flow.features.splt_direction_6_0 ++
+                            meta.flow.features.splt_direction_6_1 ++
+                            meta.flow.features.splt_direction_6_2 ++
+                            meta.flow.features.splt_direction_7_0 ++
+                            meta.flow.features.splt_direction_7_1 ++
+                            meta.flow.features.splt_direction_7_2 ++
+                            meta.flow.features.splt_direction_8_0 ++
+                            meta.flow.features.splt_direction_8_1 ++
+                            meta.flow.features.splt_direction_8_2;
+    }
+
+
+
+    /**
+    * convert bit string to struct
+    **/
+    action bitstring_to_struct() {
+        // only constant can be assigned to the slicing index
+
+        /************************* states of flow entry ***********************/
+        const int lowerBound_0 = 1225 - 32;
+        meta.flow.flow_id =
+            meta.bitstring[(lowerBound_0+32 -1):lowerBound_0];
+
+        const int lowerBound_1 = lowerBound_0 - 32;
+        meta.flow.src_ipv4_addr =
+            meta.bitstring[lowerBound_1+31:lowerBound_1];
+
+        const int lowerBound_2 = lowerBound_1 - 32;
+        meta.flow.dst_ipv4_addr =
+            meta.bitstring[lowerBound_2+31:lowerBound_2];
+
+        const int lowerBound_3 = lowerBound_2 - 16;
+        meta.flow.src_port =
+            meta.bitstring[lowerBound_3+15:lowerBound_3];
+
+        const int lowerBound_4 = lowerBound_3 - 16;
+        meta.flow.dst_port =
+            meta.bitstring[lowerBound_4+15:lowerBound_4];
+
+        const int lowerBound_5 = lowerBound_4 - 8;
+        meta.flow.protocol =
+            meta.bitstring[lowerBound_5+7:lowerBound_5];
+
+        const int lowerBound_6 = lowerBound_5 - 48;
+        meta.flow.packet_8th_seen_ms =
+            meta.bitstring[lowerBound_6+48 -1:lowerBound_6];
+
+        const int lowerBound_7 = lowerBound_6 - 1;
+        meta.flow.stored =
+            meta.bitstring[lowerBound_7:lowerBound_7];
+
+        const int lowerBound_8 = lowerBound_7 - 1;
+        meta.flow.class =
+            meta.bitstring[lowerBound_8:lowerBound_8];
+
+        const int lowerBound_9 = lowerBound_8 - 1;
+        meta.flow.classified =
+            meta.bitstring[lowerBound_9:lowerBound_9];
+
+        const int lowerBound_10 = lowerBound_9 - 1;
+        meta.flow.class_tree_1 =
+            meta.bitstring[lowerBound_10:lowerBound_10];
+
+        const int lowerBound_11 = lowerBound_10 - 1;
+        meta.flow.classified_tree_1 =
+            meta.bitstring[lowerBound_11:lowerBound_11];
+
+        const int lowerBound_12 = lowerBound_11 - 1;
+        meta.flow.class_tree_2 =
+            meta.bitstring[lowerBound_12:lowerBound_12];
+
+        const int lowerBound_13 = lowerBound_12 - 1;
+        meta.flow.classified_tree_2 =
+            meta.bitstring[lowerBound_13:lowerBound_13];
+
+        const int lowerBound_14 = lowerBound_13 - 1;
+        meta.flow.class_tree_3 =
+            meta.bitstring[lowerBound_14:lowerBound_14];
+
+        const int lowerBound_15 = lowerBound_14 - 1;
+        meta.flow.classified_tree_3 =
+            meta.bitstring[lowerBound_15:lowerBound_15];
+
+
+        /************************* features ***********************/
+
+        const int lowerBound_16 = lowerBound_15 - 48;
+        meta.flow.features.bidirectional_first_seen_ms =
+            meta.bitstring[lowerBound_16+48 -1:lowerBound_16];
+
+        const int lowerBound_17 = lowerBound_16 - 8;
+        meta.flow.features.bidirectional_packets =
+            meta.bitstring[lowerBound_17+8 -1:lowerBound_17];
+
+        const int lowerBound_18 = lowerBound_17 - 32;
+        meta.flow.features.bidirectional_bytes =
+            meta.bitstring[lowerBound_18+32 -1:lowerBound_18];
+
+        const int lowerBound_19 = lowerBound_18 - 8;
+        meta.flow.features.src2dst_packets =
+            meta.bitstring[lowerBound_19+8 -1:lowerBound_19];
+
+        const int lowerBound_20 = lowerBound_19 - 32;
+        meta.flow.features.src2dst_bytes =
+            meta.bitstring[lowerBound_20+32 -1:lowerBound_20];
+
+        const int lowerBound_21 = lowerBound_20 - 8;
+        meta.flow.features.dst2src_packets =
+            meta.bitstring[lowerBound_21+8 -1:lowerBound_21];
+
+        const int lowerBound_22 = lowerBound_21 - 32;
+        meta.flow.features.dst2src_bytes =
+            meta.bitstring[lowerBound_22+32 -1:lowerBound_22];
+
+        const int lowerBound_23 = lowerBound_22 - 32;
+        meta.flow.features.bidirectional_min_ps =
+            meta.bitstring[lowerBound_23+32 -1:lowerBound_23];
+
+        const int lowerBound_24 = lowerBound_23 - 32;
+        meta.flow.features.bidirectional_mean_ps =
+            meta.bitstring[lowerBound_24+32 -1:lowerBound_24];
+
+        const int lowerBound_25 = lowerBound_24 - 32;
+        meta.flow.features.bidirectional_max_ps =
+            meta.bitstring[lowerBound_25+32 -1:lowerBound_25];
+
+        const int lowerBound_26 = lowerBound_25 - 32;
+        meta.flow.features.src2dst_min_ps =
+            meta.bitstring[lowerBound_26+32 -1:lowerBound_26];
+
+        const int lowerBound_27 = lowerBound_26 - 32;
+        meta.flow.features.src2dst_max_ps =
+            meta.bitstring[lowerBound_27+32 -1:lowerBound_27];
+
+        const int lowerBound_28 = lowerBound_27 - 32;
+        meta.flow.features.dst2src_min_ps =
+            meta.bitstring[lowerBound_28+32 -1:lowerBound_28];
+
+        const int lowerBound_29 = lowerBound_28 - 32;
+        meta.flow.features.dst2src_max_ps =
+            meta.bitstring[lowerBound_29+32 -1:lowerBound_29];
+
+        const int lowerBound_30 = lowerBound_29 - 8;
+        meta.flow.features.bidirectional_syn_packets =
+            meta.bitstring[lowerBound_30+8 -1:lowerBound_30];
+
+        const int lowerBound_31 = lowerBound_30 - 8;
+        meta.flow.features.bidirectional_cwr_packets =
+            meta.bitstring[lowerBound_31+8 -1:lowerBound_31];
+
+        const int lowerBound_32 = lowerBound_31 - 8;
+        meta.flow.features.bidirectional_ece_packets =
+            meta.bitstring[lowerBound_32+8 -1:lowerBound_32];
+
+        const int lowerBound_33 = lowerBound_32 - 8;
+        meta.flow.features.bidirectional_urg_packets =
+            meta.bitstring[lowerBound_33+8 -1:lowerBound_33];
+
+        const int lowerBound_34 = lowerBound_33 - 8;
+        meta.flow.features.bidirectional_ack_packets =
+            meta.bitstring[lowerBound_34+8 -1:lowerBound_34];
+
+        const int lowerBound_35 = lowerBound_34 - 8;
+        meta.flow.features.bidirectional_psh_packets =
+            meta.bitstring[lowerBound_35+8 -1:lowerBound_35];
+
+        const int lowerBound_36 = lowerBound_35 - 8;
+        meta.flow.features.bidirectional_rst_packets =
+            meta.bitstring[lowerBound_36+8 -1:lowerBound_36];
+
+        const int lowerBound_37 = lowerBound_36 - 8;
+        meta.flow.features.bidirectional_fin_packets =
+            meta.bitstring[lowerBound_37+8 -1:lowerBound_37];
+
+        const int lowerBound_38 = lowerBound_37 - 8;
+        meta.flow.features.src2dst_syn_packets =
+            meta.bitstring[lowerBound_38+8 -1:lowerBound_38];
+
+        const int lowerBound_39 = lowerBound_38 - 8;
+        meta.flow.features.src2dst_cwr_packets =
+            meta.bitstring[lowerBound_39+8 -1:lowerBound_39];
+
+        const int lowerBound_40 = lowerBound_39 - 8;
+        meta.flow.features.src2dst_ece_packets =
+            meta.bitstring[lowerBound_40+8 -1:lowerBound_40];
+
+        const int lowerBound_41 = lowerBound_40 - 8;
+        meta.flow.features.src2dst_urg_packets =
+            meta.bitstring[lowerBound_41+8 -1:lowerBound_41];
+
+        const int lowerBound_42 = lowerBound_41 - 8;
+        meta.flow.features.src2dst_ack_packets =
+            meta.bitstring[lowerBound_42+8 -1:lowerBound_42];
+
+        const int lowerBound_43 = lowerBound_42 - 8;
+        meta.flow.features.src2dst_psh_packets =
+            meta.bitstring[lowerBound_43+8 -1:lowerBound_43];
+
+        const int lowerBound_44 = lowerBound_43 - 8;
+        meta.flow.features.src2dst_rst_packets =
+            meta.bitstring[lowerBound_44+8 -1:lowerBound_44];
+
+        const int lowerBound_45 = lowerBound_44 - 8;
+        meta.flow.features.src2dst_fin_packets =
+            meta.bitstring[lowerBound_45+8 -1:lowerBound_45];
+
+        const int lowerBound_46 = lowerBound_45 - 8;
+        meta.flow.features.dst2src_syn_packets =
+            meta.bitstring[lowerBound_46+8 -1:lowerBound_46];
+
+        const int lowerBound_47 = lowerBound_46 - 8;
+        meta.flow.features.dst2src_cwr_packets =
+            meta.bitstring[lowerBound_47+8 -1:lowerBound_47];
+
+        const int lowerBound_48 = lowerBound_47 - 8;
+        meta.flow.features.dst2src_ece_packets =
+            meta.bitstring[lowerBound_48+8 -1:lowerBound_48];
+
+        const int lowerBound_49 = lowerBound_48 - 8;
+        meta.flow.features.dst2src_urg_packets =
+            meta.bitstring[lowerBound_49+8 -1:lowerBound_49];
+
+        const int lowerBound_50 = lowerBound_49 - 8;
+        meta.flow.features.dst2src_ack_packets =
+            meta.bitstring[lowerBound_50+8 -1:lowerBound_50];
+
+        const int lowerBound_51 = lowerBound_50 - 8;
+        meta.flow.features.dst2src_psh_packets =
+            meta.bitstring[lowerBound_51+8 -1:lowerBound_51];
+
+        const int lowerBound_52 = lowerBound_51 - 8;
+        meta.flow.features.dst2src_rst_packets =
+            meta.bitstring[lowerBound_52+8 -1:lowerBound_52];
+
+        const int lowerBound_53 = lowerBound_52 - 8;
+        meta.flow.features.dst2src_fin_packets =
+            meta.bitstring[lowerBound_53+8 -1:lowerBound_53];
+
+        const int lowerBound_54 = lowerBound_53 - 32;
+        meta.flow.features.splt_ps_1 =
+            meta.bitstring[lowerBound_54+32 -1:lowerBound_54];
+
+        const int lowerBound_55 = lowerBound_54 - 32;
+        meta.flow.features.splt_ps_2 =
+            meta.bitstring[lowerBound_55+32 -1:lowerBound_55];
+
+        const int lowerBound_56 = lowerBound_55 - 32;
+        meta.flow.features.splt_ps_3 =
+            meta.bitstring[lowerBound_56+32 -1:lowerBound_56];
+
+        const int lowerBound_57 = lowerBound_56 - 32;
+        meta.flow.features.splt_ps_4 =
+            meta.bitstring[lowerBound_57+32 -1:lowerBound_57];
+
+        const int lowerBound_58 = lowerBound_57 - 32;
+        meta.flow.features.splt_ps_5 =
+            meta.bitstring[lowerBound_58+32 -1:lowerBound_58];
+
+        const int lowerBound_59 = lowerBound_58 - 32;
+        meta.flow.features.splt_ps_6 =
+            meta.bitstring[lowerBound_59+32 -1:lowerBound_59];
+
+        const int lowerBound_60 = lowerBound_59 - 32;
+        meta.flow.features.splt_ps_7 =
+            meta.bitstring[lowerBound_60+32 -1:lowerBound_60];
+
+        const int lowerBound_61 = lowerBound_60 - 32;
+        meta.flow.features.splt_ps_8 =
+            meta.bitstring[lowerBound_61+32 -1:lowerBound_61];
+
+        const int lowerBound_62 = lowerBound_61 - 8;
+        meta.flow.features.splt_direction_1_0 =
+            meta.bitstring[lowerBound_62+8 -1:lowerBound_62];
+
+        const int lowerBound_63 = lowerBound_62 - 8;
+        meta.flow.features.splt_direction_1_1 =
+            meta.bitstring[lowerBound_63+8 -1:lowerBound_63];
+
+        const int lowerBound_64 = lowerBound_63 - 8;
+        meta.flow.features.splt_direction_1_2 =
+            meta.bitstring[lowerBound_64+8 -1:lowerBound_64];
+
+        const int lowerBound_65 = lowerBound_64 - 8;
+        meta.flow.features.splt_direction_2_0 =
+            meta.bitstring[lowerBound_65+8 -1:lowerBound_65];
+
+        const int lowerBound_66 = lowerBound_65 - 8;
+        meta.flow.features.splt_direction_2_1 =
+            meta.bitstring[lowerBound_66+8 -1:lowerBound_66];
+
+        const int lowerBound_67 = lowerBound_66 - 8;
+        meta.flow.features.splt_direction_2_2 =
+            meta.bitstring[lowerBound_67+8 -1:lowerBound_67];
+
+        const int lowerBound_68 = lowerBound_67 - 8;
+        meta.flow.features.splt_direction_3_0 =
+            meta.bitstring[lowerBound_68+8 -1:lowerBound_68];
+
+        const int lowerBound_69 = lowerBound_68 - 8;
+        meta.flow.features.splt_direction_3_1 =
+            meta.bitstring[lowerBound_69+8 -1:lowerBound_69];
+
+        const int lowerBound_70 = lowerBound_69 - 8;
+        meta.flow.features.splt_direction_3_2 =
+            meta.bitstring[lowerBound_70+8 -1:lowerBound_70];
+
+        const int lowerBound_71 = lowerBound_70 - 8;
+        meta.flow.features.splt_direction_4_0 =
+            meta.bitstring[lowerBound_71+8 -1:lowerBound_71];
+
+        const int lowerBound_72 = lowerBound_71 - 8;
+        meta.flow.features.splt_direction_4_1 =
+            meta.bitstring[lowerBound_72+8 -1:lowerBound_72];
+
+        const int lowerBound_73 = lowerBound_72 - 8;
+        meta.flow.features.splt_direction_4_2 =
+            meta.bitstring[lowerBound_73+8 -1:lowerBound_73];
+
+        const int lowerBound_74 = lowerBound_73 - 8;
+        meta.flow.features.splt_direction_5_0 =
+            meta.bitstring[lowerBound_74+8 -1:lowerBound_74];
+
+        const int lowerBound_75 = lowerBound_74 - 8;
+        meta.flow.features.splt_direction_5_1 =
+            meta.bitstring[lowerBound_75+8 -1:lowerBound_75];
+
+        const int lowerBound_76 = lowerBound_75 - 8;
+        meta.flow.features.splt_direction_5_2 =
+            meta.bitstring[lowerBound_76+8 -1:lowerBound_76];
+
+        const int lowerBound_77 = lowerBound_76 - 8;
+        meta.flow.features.splt_direction_6_0 =
+            meta.bitstring[lowerBound_77+8 -1:lowerBound_77];
+
+        const int lowerBound_78 = lowerBound_77 - 8;
+        meta.flow.features.splt_direction_6_1 =
+            meta.bitstring[lowerBound_78+8 -1:lowerBound_78];
+
+        const int lowerBound_79 = lowerBound_78 - 8;
+        meta.flow.features.splt_direction_6_2 =
+            meta.bitstring[lowerBound_79+8 -1:lowerBound_79];
+
+        const int lowerBound_80 = lowerBound_79 - 8;
+        meta.flow.features.splt_direction_7_0 =
+            meta.bitstring[lowerBound_80+8 -1:lowerBound_80];
+
+        const int lowerBound_81 = lowerBound_80 - 8;
+        meta.flow.features.splt_direction_7_1 =
+            meta.bitstring[lowerBound_81+8 -1:lowerBound_81];
+
+        const int lowerBound_82 = lowerBound_81 - 8;
+        meta.flow.features.splt_direction_7_2 =
+            meta.bitstring[lowerBound_82+8 -1:lowerBound_82];
+
+        const int lowerBound_83 = lowerBound_82 - 8;
+        meta.flow.features.splt_direction_8_0 =
+            meta.bitstring[lowerBound_83+8 -1:lowerBound_83];
+
+        const int lowerBound_84 = lowerBound_83 - 8;
+        meta.flow.features.splt_direction_8_1 =
+            meta.bitstring[lowerBound_84+8 -1:lowerBound_84];
+
+        const int lowerBound_85 = lowerBound_84 - 8;
+        meta.flow.features.splt_direction_8_2 =
+            meta.bitstring[lowerBound_85+8 -1:lowerBound_85];
+    }
+
+
+    /**
+    * called by the control plane to install rules.
+    **/
+    action compare_feature(bit<16> feature_id, bit<56> threshold, bit<8> next_node_id) {
+        // update the node id
+        meta.current_node_id = next_node_id;
+        // the current feature with the maximal feature size bits
+        bit<56> current_feature = 0;
+
+
+        if (feature_id == FeatureId.dst2src_bytes_id)
+            current_feature = (bit<56>) meta.flow.features.dst2src_bytes;
+        else if (feature_id == FeatureId.bidirectional_bytes_id)
+            current_feature = (bit<56>) meta.flow.features.bidirectional_bytes;
+        else if (feature_id == FeatureId.bidirectional_mean_ps_id)
+            current_feature = (bit<56>) meta.flow.features.bidirectional_mean_ps;
+        else if (feature_id == FeatureId.dst2src_max_ps_id)
+            current_feature = (bit<56>) meta.flow.features.dst2src_max_ps;
+        else if (feature_id == FeatureId.bidirectional_max_ps_id)
+            current_feature = (bit<56>) meta.flow.features.bidirectional_max_ps;
+        else if (feature_id == FeatureId.splt_ps_4_id)
+            current_feature = (bit<56>) meta.flow.features.splt_ps_4;
+        else if (feature_id == FeatureId.src2dst_max_ps_id)
+            current_feature = (bit<56>) meta.flow.features.src2dst_max_ps;
+        else if (feature_id == FeatureId.src2dst_bytes_id)
+            current_feature = (bit<56>) meta.flow.features.src2dst_bytes;
+        else if (feature_id == FeatureId.splt_ps_7_id)
+            current_feature = (bit<56>) meta.flow.features.splt_ps_7;
+        else if (feature_id == FeatureId.splt_ps_6_id)
+            current_feature = (bit<56>) meta.flow.features.splt_ps_6;
+        else if (feature_id == FeatureId.splt_ps_8_id)
+            current_feature = (bit<56>) meta.flow.features.splt_ps_8;
+        else if (feature_id == FeatureId.src2dst_psh_packets_id)
+            current_feature = (bit<56>) meta.flow.features.src2dst_psh_packets;
+        else if (feature_id == FeatureId.dst2src_ack_packets_id)
+            current_feature = (bit<56>) meta.flow.features.dst2src_ack_packets;
+        else if (feature_id == FeatureId.src2dst_packets_id)
+            current_feature = (bit<56>) meta.flow.features.src2dst_packets;
+        else if (feature_id == FeatureId.dst2src_packets_id)
+            current_feature = (bit<56>) meta.flow.features.dst2src_packets;
+        else if (feature_id == FeatureId.splt_direction_7_1_id)
+            current_feature = (bit<56>) meta.flow.features.splt_direction_7_1;
+        else if (feature_id == FeatureId.splt_direction_7_2_id)
+            current_feature = (bit<56>) meta.flow.features.splt_direction_7_2;
+        else if (feature_id == FeatureId.src2dst_ack_packets_id)
+            current_feature = (bit<56>) meta.flow.features.src2dst_ack_packets;
+        else if (feature_id == FeatureId.bidirectional_fin_packets_id)
+            current_feature = (bit<56>) meta.flow.features.bidirectional_fin_packets;
+        else if (feature_id == FeatureId.bidirectional_psh_packets_id)
+            current_feature = (bit<56>) meta.flow.features.bidirectional_psh_packets;
+
+        // compare the value of the selected feature to the given threshold
+        // feature_larger_than_thr = 0: feature value does not be compared
+        // feature_larger_than_thr = 1: feature value is less than threshold
+        // feature_larger_than_thr = 2: feature value is larger than threshold
+        if ((current_feature * 10) <= threshold)
+            meta.feature_larger_than_thr = 1;
+        else
+            meta.feature_larger_than_thr = 2;
+    }
+
+
+    /**
+    * Classify the flow
+    **/
+    action classify_flow(bit<3> tree_index, bit<1> class, bit<16> gini_value, bit<8> leaf_index) {
+        // set the classified and class feature of the tree accordingly
+        if (tree_index == 1) {
+            meta.flow.class_tree_1 = class;
+            meta.flow.classified_tree_1 = 1;
+            meta.gini_value_tree_1 = gini_value;
+            meta.leaf_node_id_tree_1 = leaf_index;
+        } else if (tree_index == 2) {
+            meta.flow.class_tree_2 = class;
+            meta.flow.classified_tree_2 = 1;
+            meta.gini_value_tree_2 = gini_value;
+            meta.leaf_node_id_tree_2 = leaf_index;
+        } else if (tree_index == 3) {
+            meta.flow.class_tree_3 = class;
+            meta.flow.classified_tree_3 = 1;
+            meta.gini_value_tree_3 = gini_value;
+            meta.leaf_node_id_tree_3 = leaf_index;
+        }
+        // all trees classify flow after the same number of packets have been seen.
+        meta.flow.classified = 1;
+        // reset the node id and feature_larger_than_thr to 0
+        meta.current_node_id = 0;
+        meta.feature_larger_than_thr = 0;
+    }
+
+
+    // Encapsulate the packet in header which is sent to the controller
+    action send_to_controller() {
+        // set packet in header to valid
+        hdr.pkt_in.setValid();
+        // modify the egress port to CPU_PORT
+        standard_metadata.egress_spec = 101;
+
+        hdr.pkt_in.packet_type = ControllerPacketType_t.PACKET_IN;
+        hdr.pkt_in.opcode = ControllerOpcode_t.CLASSIFY_REQUEST;
+        hdr.pkt_in.flow_id = meta.flow.flow_id;
+        hdr.pkt_in.features = meta.flow.features;
+    }
+
+    action drop() {
+        mark_to_drop(standard_metadata);
+    }
+
+
+    action ipv4_forward(egressSpec_t port) {
+        standard_metadata.egress_spec = port;
+        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+    }
+
+
+    action label_real_class_tues(out bit<1> label) {
+        if ((meta.flow.src_ipv4_addr == IP2int.id_172_16_0_1))
+            label = 1;
+        else
+            label = 0;
+    }
+
+    action label_real_class_wed(out bit<1> label) {
+        if (meta.flow.src_ipv4_addr == IP2int.id_172_16_0_1)
+            label = 1;
+        else
+            label = 0;
+    }
+
+    action label_real_class_thur(out bit<1> label) {
+        if ((meta.flow.src_ipv4_addr == IP2int.id_192_168_10_8) || (meta.flow.src_ipv4_addr == IP2int.id_172_16_0_1))
+            label = 1;
+        else
+            label = 0;
+    }
+
+    action label_real_class_fri(out bit<1> label) {
+        if ((meta.flow.src_ipv4_addr == IP2int.id_192_168_10_12) && (meta.flow.dst_ipv4_addr == IP2int.id_52_6_13_28) ||
+            (meta.flow.src_ipv4_addr == IP2int.id_192_168_10_50) && (meta.flow.dst_ipv4_addr == IP2int.id_172_16_0_1) ||
+            (meta.flow.src_ipv4_addr == IP2int.id_172_16_0_1) && (meta.flow.dst_ipv4_addr == IP2int.id_192_168_10_50) ||
+            (meta.flow.src_ipv4_addr == IP2int.id_192_168_10_17) && (meta.flow.dst_ipv4_addr == IP2int.id_52_7_235_158) ||
+            (meta.flow.src_ipv4_addr == IP2int.id_192_168_10_8) && (meta.flow.dst_ipv4_addr == IP2int.id_205_174_165_73) ||
+            (meta.flow.src_ipv4_addr == IP2int.id_192_168_10_5) && (meta.flow.dst_ipv4_addr == IP2int.id_205_174_165_73) ||
+            (meta.flow.src_ipv4_addr == IP2int.id_192_168_10_14) && (meta.flow.dst_ipv4_addr == IP2int.id_205_174_165_73) ||
+            (meta.flow.src_ipv4_addr == IP2int.id_192_168_10_9) && (meta.flow.dst_ipv4_addr == IP2int.id_205_174_165_73) ||
+            (meta.flow.src_ipv4_addr == IP2int.id_205_174_165_73) && (meta.flow.dst_ipv4_addr == IP2int.id_192_168_10_8) ||
+            (meta.flow.src_ipv4_addr == IP2int.id_192_168_10_15) && (meta.flow.dst_ipv4_addr == IP2int.id_205_174_165_73))
+
+            label = 1;
+        else
+            label = 0;
+    }
+
+
+    table forward_table {
+     key = {
+         hdr.ipv4.dstAddr: lpm;
+            // meta.flow.class: exact;
+     }
+        actions = {
+            ipv4_forward;
+            drop;
+            NoAction;
+        }
+        size = 1024;
+        default_action = NoAction();
+    }
+
+
+
+    /************************* feature match-action table ********************/
+
+    table table_cmp_feature_tree_1_level_0 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+    table table_cmp_feature_tree_1_level_1 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+    table table_cmp_feature_tree_1_level_2 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+    table table_cmp_feature_tree_1_level_3 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+    table table_cmp_feature_tree_1_level_4 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+    table table_cmp_feature_tree_1_level_5 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+
+    table table_cmp_feature_tree_2_level_0 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+    table table_cmp_feature_tree_2_level_1 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+    table table_cmp_feature_tree_2_level_2 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+    table table_cmp_feature_tree_2_level_3 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+    table table_cmp_feature_tree_2_level_4 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+    table table_cmp_feature_tree_2_level_5 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+
+    table table_cmp_feature_tree_3_level_0 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+    table table_cmp_feature_tree_3_level_1 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+    table table_cmp_feature_tree_3_level_2 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+    table table_cmp_feature_tree_3_level_3 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+    table table_cmp_feature_tree_3_level_4 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+    table table_cmp_feature_tree_3_level_5 {
+        key = {
+            meta.current_node_id: exact;
+            meta.feature_larger_than_thr: exact;
+        }
+        actions = {
+            compare_feature;
+            classify_flow;
+        }
+        size = 100;
+    }
+
+
+    apply {
+        // deal with packets with predicted flow class from controller
+        if (hdr.pkt_out.isValid()) {
+            flow_from_controller_counter.count(0);
+            // read flow entry from register and convert bitstring to struct
+            flow_buffer_32.read(meta.bitstring, hdr.pkt_out.flow_id);
+            bitstring_to_struct();
+
+            // assign the flow with real class label
+            bit<1> real_label = 0;
+            // Tuesday
+            label_real_class_tues(real_label);
+            // Wednesday
+            // label_real_class_wed(real_label);
+            // Thursday
+            // label_real_class_thur(real_label);
+            // Friday
+            // label_real_class_fri(real_label);
+
+
+            // measure the classification time from switch to controller
+            bit<128> tmp_time_diff_1 = (bit<128>) (standard_metadata.ingress_global_timestamp -
+                                                                                            meta.flow.packet_8th_seen_ms);
+            bit<128> tmp_time_sum_1 = 0;
+            classification_time_controller_register.read(tmp_time_sum_1, 0);
+            tmp_time_sum_1 = tmp_time_sum_1 + tmp_time_diff_1;
+            classification_time_controller_register.write(0, tmp_time_sum_1);
+
+            // label the flow entry according the predicted class from controller
+            meta.flow.class = hdr.pkt_out.class;
+            // store the updated flow entry in buffer
+            struct_to_bitstring();
+            flow_buffer_32.write(hdr.pkt_out.flow_id, meta.bitstring);
+        }
+        // deal with packets from network interface
+        // only process the tcp and udp packets
+        if (hdr.ipv4.isValid() && (hdr.tcp.isValid() || hdr.udp.isValid())) {
+            // determine the ports of current packet (distinguished between TCP and UDP)
+            bit<16> src_port = 0;
+            bit<16> dst_port = 0;
+            if (hdr.tcp.isValid()) {
+                src_port = hdr.tcp.srcPort;
+                dst_port = hdr.tcp.dstPort;
+            } else if (hdr.udp.isValid()) {
+                src_port = hdr.udp.srcPort;
+                dst_port = hdr.udp.dstPort;
+            }
+
+            /************************************** Extract Flow Entry **************************************/
+            /************************************************************************************************/
+
+            /**************************** control flag setting  ****************************/
+            // flag that indicates if the packet belongs to a flow in buffer. used to enter the update and classification block
+            bool is_stored_in_buffer = false;
+            // flag that indicates the existed flow id does not match the current packet, need to check if the reversed flow id exists in buffer 
+            bool check_reversed_id = false;
+            // flag that indicates hash collision occurs
+            bool is_hash_collision = false;
+            // flag that indicates it's a new flow
+            bool is_new_flow = false;
+
+
+            /**************************** check the src <-> src flow ****************************/
+            // calculate flow id using crc32
+            hash(meta.current_flow_id,
+                 HashAlgorithm.crc32,
+                 (bit<32>)1,
+                 {hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, src_port, dst_port, hdr.ipv4.protocol},
+                 (bit<32>)10000000
+                 );
+
+            // read flow entry from register and convert bitstring to struct
+            flow_buffer_32.read(meta.bitstring, meta.current_flow_id);
+            bitstring_to_struct();
+
+            // If flow exists in buffer, check if this flow is usable.
+            if (meta.flow.stored == 1) {
+                if ((standard_metadata.ingress_global_timestamp - meta.flow.features.bidirectional_first_seen_ms) > 1800000000) {
+                    // expire this flow entry
+                    meta.flow.stored = 0;
+                } else {
+                    // compare each 5-tuple value (src <-> src)
+                    if ((hdr.ipv4.protocol == meta.flow.protocol) &&
+                        (hdr.ipv4.srcAddr == meta.flow.src_ipv4_addr) &&
+                        (hdr.ipv4.dstAddr == meta.flow.dst_ipv4_addr) &&
+                        (src_port == meta.flow.src_port) &&
+                        (dst_port == meta.flow.dst_port)) {
+
+                        // the current packet belongs to this flow (src <-> src) (BINGO!!!!!!!)
+                        is_stored_in_buffer = true;
+                    } else {
+                        // the existed flow id does not match the current packet, need to check the reversed flow id
+                        check_reversed_id = true;
+                    }
+                }
+            }
+
+            /**************************** check the src <-> dst flow ****************************/
+            // Three cases entering this block 
+            //   1. the src <-> src flow id does not exist in flow buffer.
+            //   2. the src <-> src flow id is expired.
+            //   3. the src <-> src flow id exists in flow buffer, but the 5-tuple of current packet does not match the extracted flow entry.
+
+            bit<32> current_reversed_flow_id;
+            if (meta.flow.stored == 0 || check_reversed_id) {
+                hash(current_reversed_flow_id,
+                     HashAlgorithm.crc32,
+                     (bit<32>)1,
+                     {hdr.ipv4.dstAddr, hdr.ipv4.srcAddr, dst_port, src_port, hdr.ipv4.protocol},
+                     (bit<32>)10000000
+                     );
+
+                // read the flow entry with reversed flow id and convert the bitstring to struct
+                flow_buffer_32.read(meta.bitstring, current_reversed_flow_id);
+                bitstring_to_struct();
+
+                // check if src <-> dst flow id exists in buffer
+                if (meta.flow.stored == 1) {
+                    if ((standard_metadata.ingress_global_timestamp - meta.flow.features.bidirectional_first_seen_ms) > 1800000000) {
+                        // expire this flow entry
+                        meta.flow.stored = 0;
+                    } else {
+                        // compare each 5-tuple value (src <-> dst)
+                        if ((hdr.ipv4.protocol == meta.flow.protocol) &&
+                            (hdr.ipv4.dstAddr == meta.flow.src_ipv4_addr) &&
+                            (hdr.ipv4.srcAddr == meta.flow.dst_ipv4_addr) &&
+                            (dst_port == meta.flow.src_port) &&
+                            (src_port == meta.flow.dst_port)) {
+
+                            // the current packet belongs to this flow (src <-> dst) (BINGO!!!!!!!)
+                            is_stored_in_buffer = true;
+                            // set the flag bit to indicate it's a dst2src packet
+                            meta.is_dst2src = 1;
+                        } else {
+                            // the 5-tuple of src <-> dst flow does not match the current packet
+                            if (check_reversed_id) {
+                                // Both the src <-> src flow id and src <-> dst (revsersed) flow id exist in buffer, 
+                                // but 5-tuple of two flows do not match the current packet. 
+                                // It means hash collision occurs. 
+                                is_hash_collision = true;
+                            } else {
+                                // src <-> src flow id does not exist in the flow buffer or is already expired.
+                                // The 5-tuple of src <-> dst flow does not match the current packet. 
+                                // It means the current packet belongs to a new flow.
+                                is_new_flow = true;
+                            }
+                        }
+                    }
+                } else {
+                    if (check_reversed_id) {
+                        // the src <-> src flow id exists in buffer, but 5-tuple of src <-> src flow do not match the current packet. 
+                        // src <-> dst (reversed) flow id is not in the flow buffer.
+                        // It means hash collision occurs. 
+                        is_hash_collision = true;
+                    } else {
+                        // src <-> src flow id is not in the flow buffer or is expired. 
+                        // src <-> dst (reversed) flow id is not in the flow buffer.
+                        // It means the current packet belongs to a new flow.
+                        is_new_flow = true;
+                    }
+                }
+            }
+
+
+            /************************************** Initialize, Updata and Classify Flow **************************************/
+            /******************************************************************************************************************/
+
+            // initialize the node id to the dummy node
+            meta.current_node_id = 0;
+
+            // the current packet belongs to a flow in buffer
+            if (is_stored_in_buffer) {
+                // The flow is classified, forward or drop packet according to the class.
+                if (meta.flow.classified == 1) {
+                    // This packet is Benign, forward it
+                    if (meta.flow.class == 0) {
+                        forward_table.apply();
+                        // benign_packet_counter.count(0);
+                    }
+                    // This packet is Attack, drop it
+                    else {
+                        // attack_packet_counter.count(0);
+                        drop();
+                    }
+                } else {
+                    // Flow is still not classified. Update the flow entry.
+                    update_flow();
+
+                    // if the 8th packet enters switch, trigger classification
+                    if (meta.flow.features.bidirectional_packets == 8) {
+
+                        /************************* random forest **************************/
+                        // tree 1
+                        table_cmp_feature_tree_1_level_0.apply();
+                        if (meta.flow.classified_tree_1 == 0) {
+                            table_cmp_feature_tree_1_level_1.apply();
+                        }
+                        if (meta.flow.classified_tree_1 == 0) {
+                            table_cmp_feature_tree_1_level_2.apply();
+                        }
+                        if (meta.flow.classified_tree_1 == 0) {
+                            table_cmp_feature_tree_1_level_3.apply();
+                        }
+                        if (meta.flow.classified_tree_1 == 0) {
+                            table_cmp_feature_tree_1_level_4.apply();
+                        }
+                        if (meta.flow.classified_tree_1 == 0) {
+                            table_cmp_feature_tree_1_level_5.apply();
+                        }
+
+                        // tree 2
+                        table_cmp_feature_tree_2_level_0.apply();
+                        if (meta.flow.classified_tree_2 == 0) {
+                            table_cmp_feature_tree_2_level_1.apply();
+                        }
+                        if (meta.flow.classified_tree_2 == 0) {
+                            table_cmp_feature_tree_2_level_2.apply();
+                        }
+                        if (meta.flow.classified_tree_2 == 0) {
+                            table_cmp_feature_tree_2_level_3.apply();
+                        }
+                        if (meta.flow.classified_tree_2 == 0) {
+                            table_cmp_feature_tree_2_level_4.apply();
+                        }
+                        if (meta.flow.classified_tree_2 == 0) {
+                            table_cmp_feature_tree_2_level_5.apply();
+                        }
+
+                        // tree 3
+                        table_cmp_feature_tree_3_level_0.apply();
+                        if (meta.flow.classified_tree_3 == 0) {
+                            table_cmp_feature_tree_3_level_1.apply();
+                        }
+                        if (meta.flow.classified_tree_3 == 0) {
+                            table_cmp_feature_tree_3_level_2.apply();
+                        }
+                        if (meta.flow.classified_tree_3 == 0) {
+                            table_cmp_feature_tree_3_level_3.apply();
+                        }
+                        if (meta.flow.classified_tree_3 == 0) {
+                            table_cmp_feature_tree_3_level_4.apply();
+                        }
+                        if (meta.flow.classified_tree_3 == 0) {
+                            table_cmp_feature_tree_3_level_5.apply();
+                        }
+                    }
+
+
+                    /************************* voting and final classification **************************/
+                    if (meta.flow.classified == 1) {
+                        // concatenate the predicted class of each tree in a 3 bits string
+                        bit<3> class_string = meta.flow.class_tree_1 ++ meta.flow.class_tree_2 ++ meta.flow.class_tree_3;
+                        bit<16> sum_gini_3_trees_value = 0;
+                        bit<16> avg_gini_2_trees_value = 0;
+
+                        // assign the flow with real class label
+                        bit<1> real_label = 0;
+                        // Tuesday
+                        label_real_class_tues(real_label);
+                        // Wednesday
+                        // label_real_class_wed(real_label);
+                        // Thursday
+                        // label_real_class_thur(real_label);
+                        // Friday
+                        // label_real_class_fri(real_label);
+
+                        // tree 1: 0 
+                        // tree 2: 0
+                        // tree 3: 0
+                        if (class_string == 0) {
+                            sum_gini_3_trees_value = meta.gini_value_tree_1 + meta.gini_value_tree_2 + meta.gini_value_tree_3;
+                            if (sum_gini_3_trees_value <= 200 * 3) {
+                                meta.flow.class = 0;
+                                flow_predicted_p4_sum_counter.count(0);
+                                // set flag to True, used to accumulate the classification time in P4 in egress pipeline 
+                                meta.accumulate_time_p4_flag = 1;
+                                // count the confusion matrix
+                            } else {
+                                // set the flow class predicted in switch. used to trace the classification distribution in controller
+                                // TODO remove class assignment (find the other way to get the predicted class in switch)
+                                meta.flow.class = 0;
+                                // send flow to controller
+                                send_to_controller();
+                                flow_predicted_controller_sum_counter.count(0);
+                            }
+                        }
+                        // tree 1: 0 
+                        // tree 2: 0
+                        // tree 3: 1
+                        else if (class_string == 1) {
+                            avg_gini_2_trees_value = (meta.gini_value_tree_1 + meta.gini_value_tree_2) >> 1;
+                            if ((avg_gini_2_trees_value <= 200) && (avg_gini_2_trees_value <= meta.gini_value_tree_3)){
+                                meta.flow.class = 0;
+                                flow_predicted_p4_sum_counter.count(0);
+                                // set flag to True, used to accumulate the classification time in P4 in egress pipeline 
+                                meta.accumulate_time_p4_flag = 1;
+                            } else {
+                                // set the flow class predicted in switch. used to trace the classification distribution in controller
+                                // TODO remove class assignment (find the other way to get the predicted class in switch)
+                                meta.flow.class = 0;
+                                // send flow to controller
+                                send_to_controller();
+                                flow_predicted_controller_sum_counter.count(0);
+                            }
+                        }
+                        // tree 1: 0 
+                        // tree 2: 1
+                        // tree 3: 0
+                        else if (class_string == 2) {
+                            avg_gini_2_trees_value = (meta.gini_value_tree_1 + meta.gini_value_tree_3) >> 1;
+                            if ((avg_gini_2_trees_value <= 200) && (avg_gini_2_trees_value <= meta.gini_value_tree_2)){
+                                meta.flow.class = 0;
+                                flow_predicted_p4_sum_counter.count(0);
+                                // set flag to True, used to accumulate the classification time in P4 in egress pipeline 
+                                meta.accumulate_time_p4_flag = 1;
+                            } else {
+                                // set the flow class predicted in switch. used to trace the classification distribution in controller
+                                // TODO remove class assignment (find the other way to get the predicted class in switch)
+                                meta.flow.class = 0;
+                                // send flow to controller
+                                send_to_controller();
+                                flow_predicted_controller_sum_counter.count(0);
+                            }
+                        }
+                        // tree 1: 0 
+                        // tree 2: 1
+                        // tree 3: 1
+                        else if (class_string == 3) {
+                            avg_gini_2_trees_value = (meta.gini_value_tree_2 + meta.gini_value_tree_3) >> 1;
+                            if ((avg_gini_2_trees_value <= 200) && (avg_gini_2_trees_value <= meta.gini_value_tree_1)){
+                                meta.flow.class = 1;
+                                flow_predicted_p4_sum_counter.count(0);
+                                // set flag to True, used to accumulate the classification time in P4 in egress pipeline 
+                                meta.accumulate_time_p4_flag = 1;
+                                } else {
+                                // set the flow class predicted in switch. used to trace the classification distribution in controller
+                                // TODO remove class assignment (find the other way to get the predicted class in switch)
+                                meta.flow.class = 1;
+                                // send flow to controller
+                                send_to_controller();
+                                flow_predicted_controller_sum_counter.count(0);
+                            }
+                        }
+                        // tree 1: 1
+                        // tree 2: 0
+                        // tree 3: 0
+                        else if (class_string == 4) {
+                            avg_gini_2_trees_value = (meta.gini_value_tree_2 + meta.gini_value_tree_3) >> 1;
+                            if ((avg_gini_2_trees_value <= 200) && (avg_gini_2_trees_value <= meta.gini_value_tree_1)){
+                                meta.flow.class = 0;
+                                flow_predicted_p4_sum_counter.count(0);
+                                // set flag to True, used to accumulate the classification time in P4 in egress pipeline 
+                                meta.accumulate_time_p4_flag = 1;
+
+                            } else {
+                                // set the flow class predicted in switch. used to trace the classification distribution in controller
+                                // TODO remove class assignment (find the other way to get the predicted class in switch)
+                                meta.flow.class = 0;
+                                // send flow to controller
+                                send_to_controller();
+                                flow_predicted_controller_sum_counter.count(0);
+
+                            }
+                        }
+                        // tree 1: 1
+                        // tree 2: 0
+                        // tree 3: 1
+                        else if (class_string == 5) {
+                            avg_gini_2_trees_value = (meta.gini_value_tree_1 + meta.gini_value_tree_3) >> 1;
+                            if ((avg_gini_2_trees_value <= 200) && (avg_gini_2_trees_value <= meta.gini_value_tree_2)){
+                                meta.flow.class = 1;
+                                flow_predicted_p4_sum_counter.count(0);
+                                // set flag to True, used to accumulate the classification time in P4 in egress pipeline 
+                                meta.accumulate_time_p4_flag = 1;
+
+                            } else {
+                                // set the flow class predicted in switch. used to trace the classification distribution in controller
+                                // TODO remove class assignment (find the other way to get the predicted class in switch)
+                                meta.flow.class = 1;
+                                // send flow to controller
+                                send_to_controller();
+                                flow_predicted_controller_sum_counter.count(0);
+
+                            }
+                        }
+                        // tree 1: 1
+                        // tree 2: 1
+                        // tree 3: 0
+                        else if (class_string == 6) {
+                            avg_gini_2_trees_value = (meta.gini_value_tree_1 + meta.gini_value_tree_2) >> 1;
+                            if ((avg_gini_2_trees_value <= 200) && (avg_gini_2_trees_value <= meta.gini_value_tree_3)){
+                                meta.flow.class = 1;
+                                flow_predicted_p4_sum_counter.count(0);
+                                // set flag to True, used to accumulate the classification time in P4 in egress pipeline 
+                                meta.accumulate_time_p4_flag = 1;
+
+                            } else {
+                                // set the flow class predicted in switch. used to trace the classification distribution in controller
+                                // TODO remove class assignment (find the other way to get the predicted class in switch)
+                                meta.flow.class = 1;
+                                // send flow to controller
+                                send_to_controller();
+                                flow_predicted_controller_sum_counter.count(0);
+
+                            }
+                        }
+                        // tree 1: 1
+                        // tree 2: 1
+                        // tree 3: 1
+                        else if (class_string == 7) {
+                            sum_gini_3_trees_value = meta.gini_value_tree_1 + meta.gini_value_tree_2 + meta.gini_value_tree_3;
+                            if (sum_gini_3_trees_value <= 200 * 3){
+                                meta.flow.class = 1;
+                                flow_predicted_p4_sum_counter.count(0);
+                                // set flag to True, used to accumulate the classification time in P4 in egress pipeline 
+                                meta.accumulate_time_p4_flag = 1;
+
+                            } else {
+                                // set the flow class predicted in switch. used to trace the classification distribution in controller
+                                // TODO remove class assignment (find the other way to get the predicted class in switch)
+                                meta.flow.class = 1;
+                                // send flow to controller
+                                send_to_controller();
+                                flow_predicted_controller_sum_counter.count(0);
+
+                            }
+                        }
+                    }
+
+                    // store the updated features into the flow buffer.
+                    // the classified and class feature would be updated, if the 8th packet enters switch.
+                    // Therefore, struct_to_bitstring and register write operations should be placed after classification logic block.
+                    struct_to_bitstring();
+                    flow_buffer_32.write(meta.flow.flow_id, meta.bitstring);
+                    // forward_table.apply();
+                }
+
+            }
+            // the current packet does not belong to a flow in buffer
+            else {
+                // It's a hash collision, drop it. forward it
+                if (is_hash_collision) {
+                    // forward_table.apply();
+                }
+                // It's a new flow. Initialize the new flow
+                else if (is_new_flow) {
+                    // initialize ports
+                    meta.flow.src_port = src_port;
+                    meta.flow.dst_port = dst_port;
+                    // initialize the other features
+                    init_flow();
+
+                    struct_to_bitstring();
+                    flow_buffer_32.write(meta.flow.flow_id, meta.bitstring);
+                    // count the total flows
+                    // forward_table.apply();
+                }
+            }
+
+        }
+    }
+}
+
+/*************************************************************************
+****************  E G R E S S   P R O C E S S I N G   *******************
+*************************************************************************/
+
+control MyEgress(inout headers hdr,
+                 inout metadata meta,
+                 inout standard_metadata_t standard_metadata) {
+
+    // store the sum of classification time in P4
+    register<bit<128>>(1) classification_time_p4_egress_register;
+
+    apply {
+        if (meta.accumulate_time_p4_flag == 1) {
+            bit<128> tmp_time_diff = (bit<128>) (standard_metadata.egress_global_timestamp -
+                                                                                            standard_metadata.ingress_global_timestamp );
+
+            bit<128> tmp_time_sum = 0;
+            classification_time_p4_egress_register.read(tmp_time_sum, 0);
+            tmp_time_sum = tmp_time_sum + tmp_time_diff;
+
+            classification_time_p4_egress_register.write(0, tmp_time_sum);
+        }
+      }
+}
+
+/*************************************************************************
+*************   C H E C K S U M    C O M P U T A T I O N   **************
+*************************************************************************/
+
+control MyComputeChecksum(inout headers hdr, inout metadata meta) {
+     apply {
+        update_checksum(
+        hdr.ipv4.isValid(),
+            { hdr.ipv4.version,
+              hdr.ipv4.ihl,
+              hdr.ipv4.diffserv,
+              hdr.ipv4.totalLen,
+              hdr.ipv4.identification,
+              hdr.ipv4.flags,
+              hdr.ipv4.fragOffset,
+              hdr.ipv4.ttl,
+              hdr.ipv4.protocol,
+              hdr.ipv4.srcAddr,
+              hdr.ipv4.dstAddr },
+            hdr.ipv4.hdrChecksum,
+            HashAlgorithm.csum16);
+    }
+}
+
+/*************************************************************************
+***********************  D E P A R S E R  *******************************
+*************************************************************************/
+
+control MyDeparser(packet_out packet, in headers hdr) {
+    apply {
+        packet.emit(hdr.pkt_in);
+        packet.emit(hdr.ethernet);
+        packet.emit(hdr.ipv4);
+        packet.emit(hdr.udp);
+        packet.emit(hdr.tcp);
+    }
+}
+
+/*************************************************************************
+***********************  S W I T C H  *******************************
+*************************************************************************/
+
+V1Switch(
+MyParser(),
+MyVerifyChecksum(),
+MyIngress(),
+MyEgress(),
+MyComputeChecksum(),
+MyDeparser()
+) main;
+
+/****************************** TODO *****************************************/
