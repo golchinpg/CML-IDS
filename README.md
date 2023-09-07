@@ -1,5 +1,5 @@
 # Collaborative ML-based NIDS
-This repository hosts the code for the research paper titled "CML-IDS: Enhancing Intrusion Detection in SDN through Collaborative Machine Learning".
+This repository hosts the code for the research paper titled "CML-IDS: Enhancing Intrusion Detection in SDN through Collaborative Machine Learning" which is accepted to publish in the "19th International Conference on Network and Service Management (CNSM), 2023".
 
 Stay tuned for the upcoming link to access the paper.
 
