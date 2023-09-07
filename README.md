@@ -1,5 +1,5 @@
-# Collaborative NIDS-ChengboZhou-Code
-
+# Collaborative ML-based NIDS
+The codes are provided by Chengbo Zhou and Pegah Golchin
 ## Table of Contents
 
 - [**Prerequisites**](#prerequisites)
