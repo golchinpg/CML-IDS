@@ -1,0 +1,92 @@
+
+        /**
+        * convert struct to bitstring, in order to store the states in the register
+        **/
+        action struct_to_bitstring() {
+            meta.bitstring = meta.flow.flow_id ++
+                             meta.flow.src_ipv4_addr ++ 
+                             meta.flow.dst_ipv4_addr ++ 
+                             meta.flow.src_port ++ 
+                             meta.flow.dst_port ++ 
+                             meta.flow.protocol ++ 
+                             meta.flow.packet_8th_seen_ms ++ 
+                             meta.flow.stored ++
+                             meta.flow.class ++
+                             meta.flow.classified ++
+                             meta.flow.class_tree_1 ++
+                             meta.flow.classified_tree_1 ++
+                             meta.flow.class_tree_2 ++
+                             meta.flow.classified_tree_2 ++
+                             meta.flow.class_tree_3 ++
+                             meta.flow.classified_tree_3 ++ 
+                             meta.flow.features.bidirectional_first_seen_ms ++
+                             meta.flow.features.bidirectional_packets ++
+                             meta.flow.features.bidirectional_bytes ++
+                             meta.flow.features.src2dst_packets ++
+                             meta.flow.features.src2dst_bytes ++
+                             meta.flow.features.dst2src_packets ++
+                             meta.flow.features.dst2src_bytes ++
+                             meta.flow.features.bidirectional_min_ps ++
+                             meta.flow.features.bidirectional_mean_ps ++
+                             meta.flow.features.bidirectional_max_ps ++
+                             meta.flow.features.src2dst_min_ps ++
+                             meta.flow.features.src2dst_max_ps ++
+                             meta.flow.features.dst2src_min_ps ++
+                             meta.flow.features.dst2src_max_ps ++
+                             meta.flow.features.bidirectional_syn_packets ++
+                             meta.flow.features.bidirectional_cwr_packets ++
+                             meta.flow.features.bidirectional_ece_packets ++
+                             meta.flow.features.bidirectional_urg_packets ++
+                             meta.flow.features.bidirectional_ack_packets ++
+                             meta.flow.features.bidirectional_psh_packets ++
+                             meta.flow.features.bidirectional_rst_packets ++
+                             meta.flow.features.bidirectional_fin_packets ++
+                             meta.flow.features.src2dst_syn_packets ++
+                             meta.flow.features.src2dst_cwr_packets ++
+                             meta.flow.features.src2dst_ece_packets ++
+                             meta.flow.features.src2dst_urg_packets ++
+                             meta.flow.features.src2dst_ack_packets ++
+                             meta.flow.features.src2dst_psh_packets ++
+                             meta.flow.features.src2dst_rst_packets ++
+                             meta.flow.features.src2dst_fin_packets ++
+                             meta.flow.features.dst2src_syn_packets ++
+                             meta.flow.features.dst2src_cwr_packets ++
+                             meta.flow.features.dst2src_ece_packets ++
+                             meta.flow.features.dst2src_urg_packets ++
+                             meta.flow.features.dst2src_ack_packets ++
+                             meta.flow.features.dst2src_psh_packets ++
+                             meta.flow.features.dst2src_rst_packets ++
+                             meta.flow.features.dst2src_fin_packets ++
+                             meta.flow.features.splt_ps_1 ++
+                             meta.flow.features.splt_ps_2 ++
+                             meta.flow.features.splt_ps_3 ++
+                             meta.flow.features.splt_ps_4 ++
+                             meta.flow.features.splt_ps_5 ++
+                             meta.flow.features.splt_ps_6 ++
+                             meta.flow.features.splt_ps_7 ++
+                             meta.flow.features.splt_ps_8 ++
+                             meta.flow.features.splt_direction_1_0 ++
+                             meta.flow.features.splt_direction_1_1 ++
+                             meta.flow.features.splt_direction_1_2 ++
+                             meta.flow.features.splt_direction_2_0 ++
+                             meta.flow.features.splt_direction_2_1 ++
+                             meta.flow.features.splt_direction_2_2 ++
+                             meta.flow.features.splt_direction_3_0 ++
+                             meta.flow.features.splt_direction_3_1 ++
+                             meta.flow.features.splt_direction_3_2 ++
+                             meta.flow.features.splt_direction_4_0 ++
+                             meta.flow.features.splt_direction_4_1 ++
+                             meta.flow.features.splt_direction_4_2 ++
+                             meta.flow.features.splt_direction_5_0 ++
+                             meta.flow.features.splt_direction_5_1 ++
+                             meta.flow.features.splt_direction_5_2 ++
+                             meta.flow.features.splt_direction_6_0 ++
+                             meta.flow.features.splt_direction_6_1 ++
+                             meta.flow.features.splt_direction_6_2 ++
+                             meta.flow.features.splt_direction_7_0 ++
+                             meta.flow.features.splt_direction_7_1 ++
+                             meta.flow.features.splt_direction_7_2 ++
+                             meta.flow.features.splt_direction_8_0 ++
+                             meta.flow.features.splt_direction_8_1 ++
+                             meta.flow.features.splt_direction_8_2; 
+        }

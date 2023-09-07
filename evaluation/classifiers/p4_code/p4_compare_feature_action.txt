@@ -1,0 +1,41 @@
+
+            if (feature_id == FeatureId.dst2src_bytes_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.dst2src_bytes;
+            else if (feature_id == FeatureId.bidirectional_bytes_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.bidirectional_bytes;
+            else if (feature_id == FeatureId.bidirectional_mean_ps_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.bidirectional_mean_ps;
+            else if (feature_id == FeatureId.dst2src_max_ps_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.dst2src_max_ps;
+            else if (feature_id == FeatureId.bidirectional_max_ps_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.bidirectional_max_ps;
+            else if (feature_id == FeatureId.splt_ps_4_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.splt_ps_4;
+            else if (feature_id == FeatureId.src2dst_max_ps_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.src2dst_max_ps;
+            else if (feature_id == FeatureId.src2dst_bytes_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.src2dst_bytes;
+            else if (feature_id == FeatureId.splt_ps_7_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.splt_ps_7;
+            else if (feature_id == FeatureId.splt_ps_6_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.splt_ps_6;
+            else if (feature_id == FeatureId.splt_ps_8_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.splt_ps_8;
+            else if (feature_id == FeatureId.src2dst_psh_packets_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.src2dst_psh_packets;
+            else if (feature_id == FeatureId.dst2src_ack_packets_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.dst2src_ack_packets;
+            else if (feature_id == FeatureId.src2dst_packets_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.src2dst_packets;
+            else if (feature_id == FeatureId.dst2src_packets_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.dst2src_packets;
+            else if (feature_id == FeatureId.splt_direction_7_1_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.splt_direction_7_1;
+            else if (feature_id == FeatureId.splt_direction_7_2_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.splt_direction_7_2;
+            else if (feature_id == FeatureId.src2dst_ack_packets_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.src2dst_ack_packets;
+            else if (feature_id == FeatureId.bidirectional_fin_packets_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.bidirectional_fin_packets;
+            else if (feature_id == FeatureId.bidirectional_psh_packets_id)
+                current_feature = (bit<MAX_FEATURE_SIZE_BITS>) meta.flow.features.bidirectional_psh_packets;
