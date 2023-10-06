@@ -1,4 +1,0 @@
-counter_read tmp_counter 0
-register_read tmp_register 0
-register_read test_register 0
-
