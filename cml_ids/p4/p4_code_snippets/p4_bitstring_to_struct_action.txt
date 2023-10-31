@@ -1,0 +1,227 @@
+
+            /**
+            * convert bit string to struct
+            **/
+            action bitstring_to_struct() {
+                // only constant can be assigned to the slicing index
+
+                /************************* states of flow entry ***********************/
+                const int lowerBound_0 = FLOW_SIZE_BITS - FLOW_ID_BITS;
+                meta.flow.flow_id =
+                    meta.bitstring[(lowerBound_0+FLOW_ID_BITS-1):lowerBound_0];
+
+                const int lowerBound_1 = lowerBound_0 - 32;
+                meta.flow.src_ipv4_addr =
+                    meta.bitstring[lowerBound_1+31:lowerBound_1];
+
+                const int lowerBound_2 = lowerBound_1 - 32;
+                meta.flow.dst_ipv4_addr =
+                    meta.bitstring[lowerBound_2+31:lowerBound_2];
+
+                const int lowerBound_3 = lowerBound_2 - 16;
+                meta.flow.src_port =
+                    meta.bitstring[lowerBound_3+15:lowerBound_3];
+
+                const int lowerBound_4 = lowerBound_3 - 16;
+                meta.flow.dst_port =
+                    meta.bitstring[lowerBound_4+15:lowerBound_4];
+
+                const int lowerBound_5 = lowerBound_4 - 8;
+                meta.flow.protocol =
+                    meta.bitstring[lowerBound_5+7:lowerBound_5];
+
+                const int lowerBound_6 = lowerBound_5 - FLOW_TIME_BITS;
+                meta.flow.bidirectional_first_seen_ms =
+                    meta.bitstring[lowerBound_6+FLOW_TIME_BITS-1:lowerBound_6];
+
+                const int lowerBound_7 = lowerBound_6 - FLOW_TIME_BITS;
+                meta.flow.packet_8th_seen_ms =
+                    meta.bitstring[lowerBound_7+FLOW_TIME_BITS-1:lowerBound_7];
+
+                const int lowerBound_8 = lowerBound_7 - 1;
+                meta.flow.stored =
+                    meta.bitstring[lowerBound_8:lowerBound_8];
+
+                const int lowerBound_9 = lowerBound_8 - 1;
+                meta.flow.class =
+                    meta.bitstring[lowerBound_9:lowerBound_9];
+
+                const int lowerBound_10 = lowerBound_9 - 1;
+                meta.flow.classified =
+                    meta.bitstring[lowerBound_10:lowerBound_10];
+
+                const int lowerBound_11 = lowerBound_10 - 1;
+                meta.flow.class_tree_1 =
+                    meta.bitstring[lowerBound_11:lowerBound_11];
+
+                const int lowerBound_12 = lowerBound_11 - 1;
+                meta.flow.classified_tree_1 =
+                    meta.bitstring[lowerBound_12:lowerBound_12];
+
+                const int lowerBound_13 = lowerBound_12 - 1;
+                meta.flow.class_tree_2 =
+                    meta.bitstring[lowerBound_13:lowerBound_13];
+
+                const int lowerBound_14 = lowerBound_13 - 1;
+                meta.flow.classified_tree_2 =
+                    meta.bitstring[lowerBound_14:lowerBound_14];
+
+                const int lowerBound_15 = lowerBound_14 - 1;
+                meta.flow.class_tree_3 =
+                    meta.bitstring[lowerBound_15:lowerBound_15];
+
+                const int lowerBound_16 = lowerBound_15 - 1;
+                meta.flow.classified_tree_3 =
+                    meta.bitstring[lowerBound_16:lowerBound_16];
+        
+
+                /************************* features ***********************/
+
+                const int lowerBound_17 = lowerBound_16 - FLOW_COUNT_BITS;
+                meta.flow.features.bidirectional_packets =
+                    meta.bitstring[lowerBound_17+FLOW_COUNT_BITS-1:lowerBound_17];
+
+                const int lowerBound_18 = lowerBound_17 - FLOW_BYTES_BITS;
+                meta.flow.features.bidirectional_bytes =
+                    meta.bitstring[lowerBound_18+FLOW_BYTES_BITS-1:lowerBound_18];
+
+                const int lowerBound_19 = lowerBound_18 - FLOW_COUNT_BITS;
+                meta.flow.features.src2dst_packets =
+                    meta.bitstring[lowerBound_19+FLOW_COUNT_BITS-1:lowerBound_19];
+
+                const int lowerBound_20 = lowerBound_19 - FLOW_BYTES_BITS;
+                meta.flow.features.src2dst_bytes =
+                    meta.bitstring[lowerBound_20+FLOW_BYTES_BITS-1:lowerBound_20];
+
+                const int lowerBound_21 = lowerBound_20 - FLOW_COUNT_BITS;
+                meta.flow.features.dst2src_packets =
+                    meta.bitstring[lowerBound_21+FLOW_COUNT_BITS-1:lowerBound_21];
+
+                const int lowerBound_22 = lowerBound_21 - FLOW_BYTES_BITS;
+                meta.flow.features.dst2src_bytes =
+                    meta.bitstring[lowerBound_22+FLOW_BYTES_BITS-1:lowerBound_22];
+
+                const int lowerBound_23 = lowerBound_22 - FLOW_BYTES_BITS;
+                meta.flow.features.bidirectional_min_ps =
+                    meta.bitstring[lowerBound_23+FLOW_BYTES_BITS-1:lowerBound_23];
+
+                const int lowerBound_24 = lowerBound_23 - FLOW_BYTES_BITS;
+                meta.flow.features.bidirectional_mean_ps =
+                    meta.bitstring[lowerBound_24+FLOW_BYTES_BITS-1:lowerBound_24];
+
+                const int lowerBound_25 = lowerBound_24 - FLOW_BYTES_BITS;
+                meta.flow.features.bidirectional_max_ps =
+                    meta.bitstring[lowerBound_25+FLOW_BYTES_BITS-1:lowerBound_25];
+
+                const int lowerBound_26 = lowerBound_25 - FLOW_BYTES_BITS;
+                meta.flow.features.src2dst_min_ps =
+                    meta.bitstring[lowerBound_26+FLOW_BYTES_BITS-1:lowerBound_26];
+
+                const int lowerBound_27 = lowerBound_26 - FLOW_BYTES_BITS;
+                meta.flow.features.src2dst_max_ps =
+                    meta.bitstring[lowerBound_27+FLOW_BYTES_BITS-1:lowerBound_27];
+
+                const int lowerBound_28 = lowerBound_27 - FLOW_BYTES_BITS;
+                meta.flow.features.dst2src_min_ps =
+                    meta.bitstring[lowerBound_28+FLOW_BYTES_BITS-1:lowerBound_28];
+
+                const int lowerBound_29 = lowerBound_28 - FLOW_BYTES_BITS;
+                meta.flow.features.dst2src_max_ps =
+                    meta.bitstring[lowerBound_29+FLOW_BYTES_BITS-1:lowerBound_29];
+
+                const int lowerBound_30 = lowerBound_29 - FLOW_COUNT_BITS;
+                meta.flow.features.bidirectional_syn_packets =
+                    meta.bitstring[lowerBound_30+FLOW_COUNT_BITS-1:lowerBound_30];
+
+                const int lowerBound_31 = lowerBound_30 - FLOW_COUNT_BITS;
+                meta.flow.features.bidirectional_cwr_packets =
+                    meta.bitstring[lowerBound_31+FLOW_COUNT_BITS-1:lowerBound_31];
+
+                const int lowerBound_32 = lowerBound_31 - FLOW_COUNT_BITS;
+                meta.flow.features.bidirectional_ece_packets =
+                    meta.bitstring[lowerBound_32+FLOW_COUNT_BITS-1:lowerBound_32];
+
+                const int lowerBound_33 = lowerBound_32 - FLOW_COUNT_BITS;
+                meta.flow.features.bidirectional_urg_packets =
+                    meta.bitstring[lowerBound_33+FLOW_COUNT_BITS-1:lowerBound_33];
+
+                const int lowerBound_34 = lowerBound_33 - FLOW_COUNT_BITS;
+                meta.flow.features.bidirectional_ack_packets =
+                    meta.bitstring[lowerBound_34+FLOW_COUNT_BITS-1:lowerBound_34];
+
+                const int lowerBound_35 = lowerBound_34 - FLOW_COUNT_BITS;
+                meta.flow.features.bidirectional_psh_packets =
+                    meta.bitstring[lowerBound_35+FLOW_COUNT_BITS-1:lowerBound_35];
+
+                const int lowerBound_36 = lowerBound_35 - FLOW_COUNT_BITS;
+                meta.flow.features.bidirectional_rst_packets =
+                    meta.bitstring[lowerBound_36+FLOW_COUNT_BITS-1:lowerBound_36];
+
+                const int lowerBound_37 = lowerBound_36 - FLOW_COUNT_BITS;
+                meta.flow.features.bidirectional_fin_packets =
+                    meta.bitstring[lowerBound_37+FLOW_COUNT_BITS-1:lowerBound_37];
+
+                const int lowerBound_38 = lowerBound_37 - FLOW_COUNT_BITS;
+                meta.flow.features.src2dst_syn_packets =
+                    meta.bitstring[lowerBound_38+FLOW_COUNT_BITS-1:lowerBound_38];
+
+                const int lowerBound_39 = lowerBound_38 - FLOW_COUNT_BITS;
+                meta.flow.features.src2dst_cwr_packets =
+                    meta.bitstring[lowerBound_39+FLOW_COUNT_BITS-1:lowerBound_39];
+
+                const int lowerBound_40 = lowerBound_39 - FLOW_COUNT_BITS;
+                meta.flow.features.src2dst_ece_packets =
+                    meta.bitstring[lowerBound_40+FLOW_COUNT_BITS-1:lowerBound_40];
+
+                const int lowerBound_41 = lowerBound_40 - FLOW_COUNT_BITS;
+                meta.flow.features.src2dst_urg_packets =
+                    meta.bitstring[lowerBound_41+FLOW_COUNT_BITS-1:lowerBound_41];
+
+                const int lowerBound_42 = lowerBound_41 - FLOW_COUNT_BITS;
+                meta.flow.features.src2dst_ack_packets =
+                    meta.bitstring[lowerBound_42+FLOW_COUNT_BITS-1:lowerBound_42];
+
+                const int lowerBound_43 = lowerBound_42 - FLOW_COUNT_BITS;
+                meta.flow.features.src2dst_psh_packets =
+                    meta.bitstring[lowerBound_43+FLOW_COUNT_BITS-1:lowerBound_43];
+
+                const int lowerBound_44 = lowerBound_43 - FLOW_COUNT_BITS;
+                meta.flow.features.src2dst_rst_packets =
+                    meta.bitstring[lowerBound_44+FLOW_COUNT_BITS-1:lowerBound_44];
+
+                const int lowerBound_45 = lowerBound_44 - FLOW_COUNT_BITS;
+                meta.flow.features.src2dst_fin_packets =
+                    meta.bitstring[lowerBound_45+FLOW_COUNT_BITS-1:lowerBound_45];
+
+                const int lowerBound_46 = lowerBound_45 - FLOW_COUNT_BITS;
+                meta.flow.features.dst2src_syn_packets =
+                    meta.bitstring[lowerBound_46+FLOW_COUNT_BITS-1:lowerBound_46];
+
+                const int lowerBound_47 = lowerBound_46 - FLOW_COUNT_BITS;
+                meta.flow.features.dst2src_cwr_packets =
+                    meta.bitstring[lowerBound_47+FLOW_COUNT_BITS-1:lowerBound_47];
+
+                const int lowerBound_48 = lowerBound_47 - FLOW_COUNT_BITS;
+                meta.flow.features.dst2src_ece_packets =
+                    meta.bitstring[lowerBound_48+FLOW_COUNT_BITS-1:lowerBound_48];
+
+                const int lowerBound_49 = lowerBound_48 - FLOW_COUNT_BITS;
+                meta.flow.features.dst2src_urg_packets =
+                    meta.bitstring[lowerBound_49+FLOW_COUNT_BITS-1:lowerBound_49];
+
+                const int lowerBound_50 = lowerBound_49 - FLOW_COUNT_BITS;
+                meta.flow.features.dst2src_ack_packets =
+                    meta.bitstring[lowerBound_50+FLOW_COUNT_BITS-1:lowerBound_50];
+
+                const int lowerBound_51 = lowerBound_50 - FLOW_COUNT_BITS;
+                meta.flow.features.dst2src_psh_packets =
+                    meta.bitstring[lowerBound_51+FLOW_COUNT_BITS-1:lowerBound_51];
+
+                const int lowerBound_52 = lowerBound_51 - FLOW_COUNT_BITS;
+                meta.flow.features.dst2src_rst_packets =
+                    meta.bitstring[lowerBound_52+FLOW_COUNT_BITS-1:lowerBound_52];
+
+                const int lowerBound_53 = lowerBound_52 - FLOW_COUNT_BITS;
+                meta.flow.features.dst2src_fin_packets =
+                    meta.bitstring[lowerBound_53+FLOW_COUNT_BITS-1:lowerBound_53];
+           }

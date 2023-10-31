@@ -1,0 +1,5 @@
+counter_read packet_ipv4_total_counter 0
+counter_read flow_classified_counter 0
+counter_read flow_predicted_p4_sum_counter 0
+counter_read flow_predicted_controller_sum_counter 0
+counter_read flow_from_controller_counter 0
