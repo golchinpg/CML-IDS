@@ -1,0 +1,85 @@
+INFO:root:**************************************************************************************
+INFO:root:**************************************************************************************
+INFO:root:Dataset: 8 pkts of sub-flow, balanced
+INFO:root:The computation of feature importance procedure starts at Mon Sep 25 14:37:57 2023
+INFO:root:Mutual information: 1 starts Mon Sep 25 14:37:57 2023
+INFO:root:Mutual information: 1 ends Mon Sep 25 14:38:26 2023
+INFO:root:Mutual information: 1 takes time 0:00:28.903900 
+INFO:root:Mutual information: 2 starts Mon Sep 25 14:38:26 2023
+INFO:root:Mutual information: 2 ends Mon Sep 25 14:38:55 2023
+INFO:root:Mutual information: 2 takes time 0:00:28.597584 
+INFO:root:Mutual information: 3 starts Mon Sep 25 14:38:55 2023
+INFO:root:Mutual information: 3 ends Mon Sep 25 14:39:24 2023
+INFO:root:Mutual information: 3 takes time 0:00:28.686032 
+INFO:root:Mutual information: 4 starts Mon Sep 25 14:39:24 2023
+INFO:root:Mutual information: 4 ends Mon Sep 25 14:39:52 2023
+INFO:root:Mutual information: 4 takes time 0:00:28.415735 
+INFO:root:Mutual information: 5 starts Mon Sep 25 14:39:52 2023
+INFO:root:Mutual information: 5 ends Mon Sep 25 14:40:21 2023
+INFO:root:Mutual information: 5 takes time 0:00:28.542798 
+INFO:root:Impurity importance: 1 starts Mon Sep 25 14:40:21 2023
+INFO:root:Impurity importance: 1 ends Mon Sep 25 14:40:22 2023
+INFO:root:Impurity importance: 1 takes time 0:00:01.693918
+INFO:root:Impurity importance: 2 starts Mon Sep 25 14:40:22 2023
+INFO:root:Impurity importance: 2 ends Mon Sep 25 14:40:24 2023
+INFO:root:Impurity importance: 2 takes time 0:00:01.554532
+INFO:root:Impurity importance: 3 starts Mon Sep 25 14:40:24 2023
+INFO:root:Impurity importance: 3 ends Mon Sep 25 14:40:25 2023
+INFO:root:Impurity importance: 3 takes time 0:00:01.615048
+INFO:root:Impurity importance: 4 starts Mon Sep 25 14:40:25 2023
+INFO:root:Impurity importance: 4 ends Mon Sep 25 14:40:27 2023
+INFO:root:Impurity importance: 4 takes time 0:00:01.948716
+INFO:root:Impurity importance: 5 starts Mon Sep 25 14:40:27 2023
+INFO:root:Impurity importance: 5 ends Mon Sep 25 14:40:29 2023
+INFO:root:Impurity importance: 5 takes time 0:00:01.986597
+INFO:root:Random forest importance: 1 starts Mon Sep 25 14:40:29 2023
+INFO:root:Random forest importance: 1 ends Mon Sep 25 14:40:32 2023
+INFO:root:Random forest importance: 1 takes time 0:00:02.550814
+INFO:root:Permutation importance: 1 starts Mon Sep 25 14:40:32 2023
+INFO:root:Permutation importance: 1 ends Mon Sep 25 14:41:03 2023
+INFO:root:Permutation importance: 1 takes time 0:00:31.459082
+INFO:root:Random forest importance: 2 starts Mon Sep 25 14:41:03 2023
+INFO:root:Random forest importance: 2 ends Mon Sep 25 14:41:06 2023
+INFO:root:Random forest importance: 2 takes time 0:00:02.481642
+INFO:root:Permutation importance: 2 starts Mon Sep 25 14:41:06 2023
+INFO:root:Permutation importance: 2 ends Mon Sep 25 14:41:36 2023
+INFO:root:Permutation importance: 2 takes time 0:00:30.505765
+INFO:root:Random forest importance: 3 starts Mon Sep 25 14:41:36 2023
+INFO:root:Random forest importance: 3 ends Mon Sep 25 14:41:39 2023
+INFO:root:Random forest importance: 3 takes time 0:00:02.511756
+INFO:root:Permutation importance: 3 starts Mon Sep 25 14:41:39 2023
+INFO:root:Permutation importance: 3 ends Mon Sep 25 14:42:10 2023
+INFO:root:Permutation importance: 3 takes time 0:00:30.613694
+INFO:root:Random forest importance: 4 starts Mon Sep 25 14:42:10 2023
+INFO:root:Random forest importance: 4 ends Mon Sep 25 14:42:12 2023
+INFO:root:Random forest importance: 4 takes time 0:00:02.478258
+INFO:root:Permutation importance: 4 starts Mon Sep 25 14:42:12 2023
+INFO:root:Permutation importance: 4 ends Mon Sep 25 14:42:42 2023
+INFO:root:Permutation importance: 4 takes time 0:00:30.447800
+INFO:root:Random forest importance: 5 starts Mon Sep 25 14:42:42 2023
+INFO:root:Random forest importance: 5 ends Mon Sep 25 14:42:45 2023
+INFO:root:Random forest importance: 5 takes time 0:00:02.492648
+INFO:root:Permutation importance: 5 starts Mon Sep 25 14:42:45 2023
+INFO:root:Permutation importance: 5 ends Mon Sep 25 14:43:16 2023
+INFO:root:Permutation importance: 5 takes time 0:00:30.731103
+INFO:root:The computation of feature importance procedure ends at Mon Sep 25 14:43:16 2023
+INFO:root:The computation of feature importance procedure takes time 0:05:19.061792
+INFO:root:The final order of features: Index(['dst2src_bytes', 'bidirectional_bytes', 'bidirectional_mean_ps',
+       'bidirectional_max_ps', 'dst2src_max_ps', 'src2dst_bytes',
+       'src2dst_max_ps', 'dst2src_ack_packets', 'src2dst_packets',
+       'src2dst_psh_packets', 'dst2src_packets', 'src2dst_ack_packets',
+       'dst2src_fin_packets', 'bidirectional_psh_packets',
+       'bidirectional_fin_packets', 'src2dst_syn_packets',
+       'dst2src_psh_packets', 'dst2src_syn_packets',
+       'bidirectional_syn_packets', 'bidirectional_ack_packets',
+       'bidirectional_min_ps', 'src2dst_min_ps', 'src2dst_fin_packets',
+       'bidirectional_packets', 'dst2src_min_ps', 'bidirectional_rst_packets',
+       'dst2src_rst_packets', 'src2dst_rst_packets', 'dst2src_urg_packets',
+       'src2dst_urg_packets', 'bidirectional_urg_packets',
+       'src2dst_ece_packets', 'bidirectional_cwr_packets',
+       'dst2src_ece_packets', 'bidirectional_ece_packets',
+       'src2dst_cwr_packets', 'dst2src_cwr_packets'],
+      dtype='object')
+
+
+
