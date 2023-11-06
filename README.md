@@ -85,16 +85,16 @@ CML-IDS can be started by the following steps.
     sudo ./control/switch_setup.sh
 ```
 
-3. Install table entries in a new console
-
-```bash
-    sudo ./control/add_entries.sh
-```
-
-4. Start the controller in a new console
+3. Start the controller in a new console
 
 ```bash
     ./control/start_controller_p4runtime_shell.py
+```
+
+4. Install table entries in a new console
+
+```bash
+    sudo ./control/add_entries.sh
 ```
 
 5. Replay the dataset [CIC-IDS2017](https://www.unb.ca/cic/datasets/ids-2017.html) using `tcpreplay` in a new console
