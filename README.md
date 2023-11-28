@@ -104,7 +104,6 @@ CML-IDS can be started by the following steps.
 ```
 
 ## <span id="evaluation">Evaluate CML-IDS</span>
-u
 You can add your customized counters or registers for monitoring in the P4 program and extend the file `./cml_ids/p4/debug/status_entries.txt` properly. Show the evaluation result by running
 
 ```bash
